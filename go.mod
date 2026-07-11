@@ -1,8 +1,6 @@
 module yggchat
 
-go 1.22
-
-toolchain go1.25.0
+go 1.25.0
 
 require (
 	github.com/Arceliar/ironwood v0.0.0-20260613025018-d50055b11f5e
