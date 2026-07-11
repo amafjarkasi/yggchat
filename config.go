@@ -26,12 +26,18 @@ type AppConfig struct {
 	Contacts       map[string]Contact `json:"contacts"`
 	Username       string             `json:"username"`
 	
-	// New feature settings
+	// Feature settings
 	AutoDeleteDays int                `json:"autoDeleteDays,omitempty"`  // Auto-delete messages after N days (0 = disabled)
 	ShowTyping     bool               `json:"showTyping,omitempty"`      // Show typing indicators
 	ShowReadReceipts bool             `json:"showReadReceipts,omitempty"` // Show read receipts
 	NotificationSound string          `json:"notificationSound,omitempty"` // Notification sound theme
 	CustomTheme    *CustomThemeConfig `json:"customTheme,omitempty"`     // Custom theme colors
+	
+	// Privacy settings
+	BurnAfterRead  bool  `json:"burnAfterRead,omitempty"`   // Delete messages after they are read
+	BurnTimeoutSec int   `json:"burnTimeoutSec,omitempty"`  // Seconds to wait before burning (0 = immediate)
+	StripMetadata  bool  `json:"stripMetadata,omitempty"`   // Strip metadata from messages
+	DecoyTraffic   bool  `json:"decoyTraffic,omitempty"`    // Generate decoy traffic to prevent traffic analysis
 }
 
 type CustomThemeConfig struct {

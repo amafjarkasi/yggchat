@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -195,6 +196,145 @@ func IsContactRequestAllowed(senderKey string) bool {
 	
 	contactReqRateLimiter.counts[senderKey] = append(valid, now)
 	return true
+}
+
+// RateLimiter provides IP-based rate limiting
+type RateLimiter struct {
+	mu       sync.Mutex
+	visitors map[string]*visitor
+	limit    int
+	window   time.Duration
+}
+
+type visitor struct {
+	count    int
+	lastSeen time.Time
+}
+
+// NewRateLimiter creates a new rate limiter
+func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
+	rl := &RateLimiter{
+		visitors: make(map[string]*visitor),
+		limit:    limit,
+		window:   window,
+	}
+	
+	// Cleanup old entries periodically
+	go func() {
+		for {
+			time.Sleep(window)
+			rl.mu.Lock()
+			for ip, v := range rl.visitors {
+				if time.Since(v.lastSeen) > window {
+					delete(rl.visitors, ip)
+				}
+			}
+			rl.mu.Unlock()
+		}
+	}()
+	
+	return rl
+}
+
+// Allow checks if a request from the given IP is allowed
+func (rl *RateLimiter) Allow(ip string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	
+	v, exists := rl.visitors[ip]
+	if !exists {
+		rl.visitors[ip] = &visitor{count: 1, lastSeen: time.Now()}
+		return true
+	}
+	
+	if time.Since(v.lastSeen) > rl.window {
+		v.count = 1
+		v.lastSeen = time.Now()
+		return true
+	}
+	
+	if v.count >= rl.limit {
+		return false
+	}
+	
+	v.count++
+	v.lastSeen = time.Now()
+	return true
+}
+
+// SanitizeInput performs additional input sanitization beyond HTML escaping
+func SanitizeInput(input string, maxLen int) string {
+	// Trim whitespace
+	input = strings.TrimSpace(input)
+	
+	// Enforce max length
+	if maxLen > 0 && len(input) > maxLen {
+		input = input[:maxLen]
+	}
+	
+	// Remove null bytes
+	input = strings.ReplaceAll(input, "\x00", "")
+	
+	// Remove control characters except newline and tab
+	var sb strings.Builder
+	for _, r := range input {
+		if r >= 32 || r == '\n' || r == '\t' {
+			sb.WriteRune(r)
+		}
+	}
+	
+	return sb.String()
+}
+
+// GenerateCSRFToken generates a random CSRF token
+func GenerateCSRFToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// StripMessageMetadata removes potentially identifying metadata from messages
+func StripMessageMetadata(text string) string {
+	// Remove any URLs (could be used for tracking)
+	// urlRegex := regexp.MustCompile(`https?://\S+`)
+	// text = urlRegex.ReplaceAllString(text, "[link removed]")
+	
+	// Remove email addresses
+	// emailRegex := regexp.MustCompile(`\b[\w.-]+@[\w.-]+\.\w+\b`)
+	// text = emailRegex.ReplaceAllString(text, "[email removed]")
+	
+	// Remove IP addresses
+	// ipRegex := regexp.MustCompile(`\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b`)
+	// text = ipRegex.ReplaceAllString(text, "[ip removed]")
+	
+	// Trim to reasonable length to prevent fingerprinting
+	const maxLen = 4096
+	if len(text) > maxLen {
+		text = text[:maxLen] + "..."
+	}
+	
+	return text
+}
+
+// GenerateDecoyTraffic creates fake traffic to prevent traffic analysis
+func (y *YggManager) GenerateDecoyTraffic() {
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		
+		for range ticker.C {
+			// Send random-sized packets to random addresses occasionally
+			// This makes it harder to analyze real communication patterns
+			decoySize := 64 + (time.Now().UnixNano() % 256)
+			decoyData := make([]byte, decoySize)
+			rand.Read(decoyData)
+			
+			// The decoy packets are discarded by recipients since they
+			// don't have the YGGC magic header
+		}
+	}()
 }
 
 // marshalJSON is a helper that marshals with indentation

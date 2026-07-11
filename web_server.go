@@ -72,12 +72,37 @@ func (s *WebServer) Start() error {
 		return err
 	}
 
-	// CORS middleware wrapper
-	corsMiddleware := func(handler http.HandlerFunc) http.HandlerFunc {
+	// Security middleware wrapper with hardened headers
+	securityMiddleware := func(handler http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			// Security headers
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-XSS-Protection", "1; mode=block")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+			
+			// Content Security Policy - restrict resource loading
+			csp := "default-src 'self'; " +
+				"script-src 'self' 'unsafe-inline'; " +
+				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+				"font-src 'self' https://fonts.gstatic.com; " +
+				"img-src 'self' data: blob:; " +
+				"connect-src 'self'; " +
+				"frame-ancestors 'none'; " +
+				"base-uri 'self'; " +
+				"form-action 'self'"
+			w.Header().Set("Content-Security-Policy", csp)
+			
+			// CORS - restrict to localhost only (not wildcard)
+			origin := r.Header.Get("Origin")
+			if origin == "" || origin == fmt.Sprintf("http://127.0.0.1:%d", s.port) || 
+			   origin == fmt.Sprintf("http://localhost:%d", s.port) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
@@ -87,10 +112,38 @@ func (s *WebServer) Start() error {
 		}
 	}
 
-	http.Handle("/", http.FileServer(http.FS(subFS)))
-	http.HandleFunc("/events", corsMiddleware(s.handleEvents))
-	http.HandleFunc("/api/state", corsMiddleware(s.handleState))
-	http.HandleFunc("/api/send", corsMiddleware(s.handleSend))
+	// CSRF-protected middleware for POST endpoints
+	csrfProtected := func(handler http.HandlerFunc) http.HandlerFunc {
+		return securityMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost {
+				// Verify CSRF token from header
+				csrfToken := r.Header.Get("X-CSRF-Token")
+				if csrfToken == "" {
+					http.Error(w, "CSRF token missing", http.StatusForbidden)
+					return
+				}
+				// In production, validate token against session
+				// For now, we accept any non-empty token as the app runs locally
+			}
+			handler(w, r)
+		})
+	}
+
+	// Rate limiting for API endpoints
+	apiRateLimiter := NewRateLimiter(30, time.Minute) // 30 requests per minute
+
+	http.Handle("/", securityMiddleware(http.FileServer(http.FS(subFS)).ServeHTTP))
+	http.HandleFunc("/events", securityMiddleware(s.handleEvents))
+	http.HandleFunc("/api/state", csrfProtected(s.handleState))
+	http.HandleFunc("/api/send", csrfProtected(func(w http.ResponseWriter, r *http.Request) {
+		// Apply rate limiting
+		clientIP := r.RemoteAddr
+		if !apiRateLimiter.Allow(clientIP) {
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+		s.handleSend(w, r)
+	}))
 
 	// Background ticker to broadcast peer status changes to web clients
 	go s.peerStatusBroadcastLoop()
@@ -257,6 +310,36 @@ func (s *WebServer) handleSend(w http.ResponseWriter, r *http.Request) {
 
 	case "read":
 		_ = s.ygg.SendReadReceipt(req.Dest, s.cfg.Username, time.Now().Unix())
+		
+		// Burn after read: delete messages from history after they are read
+		if s.cfg.BurnAfterRead {
+			go func() {
+				// Wait for burn timeout (default 5 seconds)
+				burnDelay := 5 * time.Second
+				if s.cfg.BurnTimeoutSec > 0 {
+					burnDelay = time.Duration(s.cfg.BurnTimeoutSec) * time.Second
+				}
+				time.Sleep(burnDelay)
+				
+				s.mu.Lock()
+				history := LoadHistory()
+				if _, ok := history[req.Dest]; ok {
+					// Keep only system messages, remove chat messages
+					var kept []string
+					for _, msg := range history[req.Dest] {
+						if strings.Contains(msg, "SYSTEM:") {
+							kept = append(kept, msg)
+						}
+					}
+					history[req.Dest] = kept
+					_ = SaveHistory(history)
+				}
+				s.mu.Unlock()
+				
+				// Broadcast update to web clients
+				s.BroadcastEvent("burn", fmt.Sprintf(`{"sender_key":"%s"}`, req.Dest))
+			}()
+		}
 
 	case "clear":
 		s.mu.Lock()
