@@ -45,12 +45,104 @@
 
 ## 📖 Overview
 
-**Yggdrasil Mesh Chat** is a next-generation, serverless, peer-to-peer chat client that operates entirely in user-space on top of the [Yggdrasil IPv6 Overlay Network](https://yggdrasil-network.github.io/). It requires **zero external servers**, **zero user accounts**, and **zero third-party coordination**.
+### What is Yggdrasil Mesh Chat?
 
-By leveraging Yggdrasil's cryptographic routing tree, nodes automatically peer with each other over TCP/UDP transport. The application compiles into a **single, portable, zero-dependency executable** containing two interfaces:
+**Yggdrasil Mesh Chat** is a next-generation, serverless, peer-to-peer encrypted messaging and file exchange client that operates entirely in user-space on top of the [Yggdrasil IPv6 Overlay Network](https://yggdrasil-network.github.io/). Unlike traditional messaging applications that rely on centralized servers, cloud infrastructure, and third-party services, Yggdrasil Mesh Chat enables direct, encrypted communication between nodes with **zero external servers**, **zero user accounts**, and **zero third-party coordination**.
 
-1. **Web Console** (default) — A stunning glassmorphic browser-based UI with real-time updates via Server-Sent Events (SSE)
-2. **Terminal TUI** (alternative) — A keyboard-optimized terminal interface powered by the Charmbracelet Bubble Tea framework
+### What is Yggdrasil?
+
+[Yggdrasil](https://yggdrasil-network.github.io/) is an early-stage implementation of a fully encrypted, self-arranging IPv6 overlay network. It creates a decentralized mesh network where:
+
+- **Every node gets a unique IPv6 address** — derived cryptographically from your public key
+- **Routing is automatic** — nodes discover each other and build optimal paths
+- **All traffic is encrypted** — using the Noise Protocol Framework
+- **No central authority** — no DNS servers, no certificate authorities, no registrars
+- **Works anywhere** — over LAN, WAN, internet, or any TCP/UDP connection
+
+The name "Yggdrasil" comes from Norse mythology — the immense cosmic tree that connects the nine worlds. Similarly, the Yggdrasil network connects nodes across the world in a tree-like routing structure.
+
+### How Does It Work?
+
+```mermaid
+sequenceDiagram
+    participant Alice as Alice's Node
+    participant Ygg as Yggdrasil Network
+    participant Bob as Bob's Node
+    
+    Note over Alice,Bob: Both nodes join the Yggdrasil overlay
+    
+    Alice->>Ygg: Node joins with Ed25519 keypair
+    Bob->>Ygg: Node joins with Ed25519 keypair
+    
+    Note over Alice,Bob: Nodes get IPv6 addresses derived from keys
+    
+    Alice->>Alice: Generate ECDH keypair for encryption
+    Bob->>Bob: Generate ECDH keypair for encryption
+    
+    Alice->>Ygg: Send contact request + ECDH public key
+    Ygg->>Bob: Deliver contact request
+    
+    Bob->>Bob: Accept & derive shared secret
+    Bob->>Ygg: Send acceptance + ECDH public key
+    Ygg->>Alice: Deliver acceptance
+    
+    Alice->>Alice: Derive same shared secret
+    Note over Alice,Bob: AES-256 key derived via SHA-256(ECDH_shared_secret)
+    
+    Alice->>Ygg: Send AES-GCM encrypted message
+    Ygg->>Bob: Deliver encrypted message
+    Bob->>Bob: Decrypt with shared AES key
+```
+
+### Why Was This Built?
+
+Traditional messaging applications (Signal, WhatsApp, Telegram, Discord) all share common problems:
+
+1. **Centralized Infrastructure**: They rely on servers that can go down, be hacked, or be compelled to hand over data
+2. **Account Requirements**: Phone numbers, email addresses, or other personally identifiable information is required
+3. **Metadata Collection**: Even with E2EE, servers know who talks to whom, when, and how often
+4. **Internet Dependency**: They require internet connectivity to function
+5. **Single Points of Failure**: If the company shuts down, the service disappears
+6. **Trust Requirements**: You must trust the company to not backdoor the encryption
+
+Yggdrasil Mesh Chat solves all of these problems by being:
+
+- **Truly Decentralized**: No servers exist — nodes communicate directly
+- **Identity-Free**: No accounts, phone numbers, or emails — just cryptographic keys
+- **Metadata-Free**: No central entity sees your communication patterns
+- **Network-Agnostic**: Works over LAN, WAN, mesh networks, or the internet
+- **Resilient**: No single point of failure — the network survives as long as any two nodes exist
+- **Trustless**: Cryptography, not corporate promises, protects your messages
+
+### Architecture Philosophy
+
+The application follows these core principles:
+
+1. **Single Binary Distribution**: The entire application compiles into one executable with zero runtime dependencies
+2. **User-Space Operation**: No root privileges, TUN/TAP devices, or kernel modules required
+3. **Dual Interface Design**: Choose between a modern web UI or a traditional terminal interface
+4. **Defense in Depth**: Multiple security layers protect against various attack vectors
+5. **Graceful Degradation**: Features work even when some components fail
+6. **Offline-First**: Messages queue locally and deliver when contacts come online
+
+### Technical Specifications
+
+| Specification | Value |
+|---------------|-------|
+| **Language** | Go 1.20+ |
+| **Network Protocol** | Yggdrasil IPv6 Overlay (Noise Protocol Framework) |
+| **Routing** | Ironwood cryptographic routing tree |
+| **Transport** | TCP and UDP (auto-selected) |
+| **Encryption (Network)** | ChaCha20-Poly1305 (Yggdrasil layer) |
+| **Encryption (Messages)** | AES-256-GCM (application layer) |
+| **Key Exchange** | Curve25519 ECDH |
+| **Key Derivation** | SHA-256 |
+| **Identity Keys** | Ed25519 |
+| **Discovery** | UDP Multicast (224.0.0.50:9999) |
+| **File Chunk Size** | 8 KB (8192 bytes) |
+| **Default Port** | 9000 (Yggdrasil), 8080 (Web Console) |
+| **Binary Size** | ~16 MB (self-contained) |
+| **Runtime Dependencies** | None |
 
 ### What Makes This Different?
 
@@ -62,7 +154,36 @@ By leveraging Yggdrasil's cryptographic routing tree, nodes automatically peer w
 | **Metadata Collection** | ✅ Yes | ❌ None |
 | **Single Point of Failure** | ✅ Yes | ❌ Decentralized |
 | **E2EE by Default** | ❌ Sometimes | ✅ Always |
-| **File Sharing** | Via cloud | Direct P2P transfer |
+| **File Sharing** | Via cloud servers | Direct P2P transfer |
+| **Open Source** | ❌ Usually proprietary | ✅ Fully open source |
+| **Self-Hostable** | ❌ Complex setup | ✅ Just run the binary |
+| **Works Offline** | ❌ No | ✅ Yes (LAN mesh) |
+| **Phone Number Required** | ✅ Usually | ❌ Never |
+| **Metadata Visible to Provider** | ✅ Yes | ❌ No provider exists |
+
+### Comparison with Similar Projects
+
+| Project | Serverless | E2EE | File Transfer | Dual UI | Auto-Discovery |
+|---------|------------|------|---------------|---------|----------------|
+| **Yggdrasil Mesh Chat** | ✅ | ✅ | ✅ P2P | ✅ Web+TUI | ✅ UDP Multicast |
+| Briar | ✅ | ✅ | ✅ | ❌ Android only | ✅ Tor/BT |
+| Session | ❌ | ✅ | ✅ | ❌ | ❌ |
+| Matrix/Element | ❌ | ✅ | ✅ | ✅ | ❌ |
+| Jami | ✅ | ✅ | ✅ | ❌ | ✅ DHT |
+| Tox | ✅ | ✅ | ✅ | ❌ | ✅ DHT |
+
+### System Requirements
+
+**Minimum:**
+- Go 1.20+ (for building)
+- Any modern OS: Windows, macOS, Linux, FreeBSD
+- 10 MB disk space
+- 50 MB RAM
+
+**Recommended:**
+- Go 1.21+ for optimal performance
+- Local network connectivity for auto-discovery
+- Port 9000 accessible for incoming connections
 
 ---
 
