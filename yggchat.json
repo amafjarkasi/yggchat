@@ -1,0 +1,10 @@
+{
+  "privateKey": "1a69d075c7b16d9d869fa61df34294bab5b104d7e3f0f0fb45a69082d5ab5ce12d6658195e9aa24cae0a8a53cfaad24375bfd78850237e1bfb660323e94b1b4a",
+  "ecdhPrivateKey": "1c4c8f7d6072af28683842751e54e81f20e41b75815c26776910ba5b23e6ef20",
+  "peers": [],
+  "listeners": [
+    "tcp://0.0.0.0:9000"
+  ],
+  "contacts": {},
+  "username": "YggUser"
+}

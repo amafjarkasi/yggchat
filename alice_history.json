@@ -1,0 +1,7 @@
+{
+  "bed08aab7fe205dcfffa391ecfdeea87bba54c44190edc093b749cc2eb67ea3b": [
+    "[06:17:02] \u001b[1;38;2;203;166;247mSYSTEM\u001b[0m: Failed to read file: open \"C:\\Users\\jbdt\\Desktop\\README.md\": The filename, directory name, or volume label syntax is incorrect.",
+    "[06:17:17] \u001b[1;38;2;203;166;247mSYSTEM\u001b[0m: [📥 Sending README.md: 0/9 (0%)]",
+    "[✓ Sent README.md successfully!]"
+  ]
+}

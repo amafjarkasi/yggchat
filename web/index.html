@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yggdrasil Mesh Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="pulse-dot active" id="mesh-status-dot"></span>
+                <h1>YGGDRASIL <span id="header-mesh-status">(ONLINE)</span></h1>
+            </div>
+            <div class="header-info">
+                <span class="badge" id="username-badge">Username: Loading...</span>
+                <span class="badge secondary" id="peer-count-badge">Peers: 0</span>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <div class="app-main">
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>👤 CONTACTS</h2>
+                    <button class="btn btn-sm btn-icon" id="open-add-contact-btn" title="Add Contact">＋</button>
+                </div>
+                <div class="contacts-list" id="contacts-list-container">
+                    <!-- Contacts will be dynamically loaded here -->
+                </div>
+            </aside>
+
+            <!-- CONTENT WINDOW -->
+            <main class="content-area">
+                <!-- CHAT PANEL -->
+                <div class="panel chat-panel" id="chat-panel">
+                    <div class="chat-header">
+                        <div class="chat-title-info">
+                            <span class="chat-title" id="chat-title-name">Select a contact to begin chat</span>
+                            <span class="badge-secure" id="chat-security-badge" style="display: none;">[🛡️ E2EE SECURED]</span>
+                        </div>
+                        <div class="chat-header-actions">
+                            <button class="btn btn-sm secondary" id="whois-contact-btn" style="display: none;">Whois</button>
+                            <button class="btn btn-sm secondary" id="nudge-contact-btn" style="display: none;">⚡ Nudge</button>
+                            <button class="btn btn-sm secondary" id="clear-chat-btn" style="display: none;">Clear</button>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chat-messages-container">
+                        <div class="welcome-screen">
+                            <div class="logo-icon">⚡</div>
+                            <h2>Welcome to Yggdrasil Mesh Console</h2>
+                            <p>Select an active contact from the sidebar or click <strong>＋</strong> to add a new contact using their hexadecimal node public key.</p>
+                        </div>
+                    </div>
+
+                    <div class="typing-status-bar" id="typing-status-bar">&nbsp;</div>
+
+                    <div class="chat-input-area" id="chat-input-container" style="display: none;">
+                        <input type="text" id="chat-input-field" placeholder="Type a message or press Tab for commands..." autocomplete="off">
+                        <input type="file" id="file-uploader" style="display: none;">
+                        <button class="btn btn-icon" id="send-file-btn" title="Send File">📎</button>
+                        <button class="btn btn-primary" id="send-msg-btn">SEND</button>
+                    </div>
+                </div>
+
+                <!-- DASHBOARD / SETTINGS PANEL -->
+                <div class="panel dashboard-panel" id="dashboard-panel">
+                    <div class="panel-header">
+                        <h2>⚙️ SYSTEM DIAGNOSTICS</h2>
+                    </div>
+                    <div class="grid-container">
+                        <div class="card">
+                            <h3>Network Info</h3>
+                            <div class="stat-line"><span class="lbl">Overlay IPv6:</span> <code id="overlay-ipv6-lbl">Loading...</code></div>
+                            <div class="stat-line"><span class="lbl">Node Public Key:</span> <code id="node-pubkey-lbl">Loading...</code></div>
+                        </div>
+                        <div class="card">
+                            <h3>Protocols</h3>
+                            <div class="stat-line"><span class="lbl">Core Layer:</span> <code>Yggdrasil Overlay v0.4</code></div>
+                            <div class="stat-line"><span class="lbl">Routing Layer:</span> <code>Ironwood Tree Router</code></div>
+                            <div class="stat-line"><span class="lbl">Encryption Layer:</span> <code>Curve25519 (ECDH) + AES-GCM</code></div>
+                        </div>
+                        <div class="card warning-card">
+                            <h3 style="color: var(--warning);">⚠️ Firewall Advisory</h3>
+                            <p style="font-size: 0.85rem; line-height: 1.4; color: var(--text-muted);">
+                                Yggdrasil provides direct end-to-end routing. Your overlay IPv6 address is publicly reachable by any node on the mesh. Ensure a local host firewall is active to block unexposed services.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="panel-header" style="margin-top: 2rem;">
+                        <h2>🔗 MESH PEER CONNECTIONS</h2>
+                        <button class="btn btn-sm btn-icon" id="open-add-peer-btn" title="Add Peer">＋</button>
+                    </div>
+                    <div class="peers-table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Peer URI</th>
+                                    <th>Direction</th>
+                                    <th>Latency</th>
+                                    <th>RX / TX</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="peers-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-muted">No peers configured. Click ＋ to add.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- FOOTER NAV -->
+        <footer class="app-footer">
+            <div class="footer-nav">
+                <button class="footer-tab active" id="tab-chat-btn">💬 Chat Console</button>
+                <button class="footer-tab" id="tab-settings-btn">⚙️ System Info</button>
+            </div>
+            <div class="footer-info">
+                <span>Press [Tab] in input box for command autocomplete</span>
+            </div>
+        </footer>
+
+        <!-- MODAL: ADD CONTACT -->
+        <div class="modal" id="add-contact-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>👤 Add Contact</h2>
+                    <span class="modal-close" id="close-contact-modal-btn">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <label for="new-contact-name">Nickname</label>
+                    <input type="text" id="new-contact-name" placeholder="e.g. Alice" autocomplete="off">
+                    <label for="new-contact-key">Public Key (Hex)</label>
+                    <input type="text" id="new-contact-key" placeholder="e.g. 1a69d075c7b1..." autocomplete="off">
+                    <div class="modal-actions">
+                        <button class="btn secondary" id="cancel-contact-modal-btn">Cancel</button>
+                        <button class="btn btn-primary" id="save-contact-btn">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: ADD PEER -->
+        <div class="modal" id="add-peer-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🔗 Add Peer</h2>
+                    <span class="modal-close" id="close-peer-modal-btn">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <label for="new-peer-uri">Peer Address URI</label>
+                    <input type="text" id="new-peer-uri" placeholder="e.g. tcp://127.0.0.1:9000" autocomplete="off">
+                    <div class="modal-actions">
+                        <button class="btn secondary" id="cancel-peer-modal-btn">Cancel</button>
+                        <button class="btn btn-primary" id="save-peer-btn">Connect</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: CONTACT REQUEST -->
+        <div class="modal" id="contact-request-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>👤 Contact Request</h2>
+                </div>
+                <div class="modal-body">
+                    <p id="incoming-request-text">Incoming request from...</p>
+                    <div class="modal-actions">
+                        <button class="btn error" id="decline-request-btn">Decline</button>
+                        <button class="btn btn-primary" id="accept-request-btn">Accept Handshake</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO FOR NOTIFICATION -->
+    <audio id="notify-sound" src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==A" preload="auto"></audio>
+    <script src="/index.js"></script>
+</body>
+</html>

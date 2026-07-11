@@ -1,0 +1,15 @@
+{
+  "privateKey": "b8bc9ff3efde73d66f21a1800a8e4f4abfa4a65291e68e44815e26f7b493cefcbed08aab7fe205dcfffa391ecfdeea87bba54c44190edc093b749cc2eb67ea3b",
+  "ecdhPrivateKey": "01d4e1be22dcb01b1d1bac96717377ba455bb6eae35a81e3a2f1d900c350a405",
+  "peers": [],
+  "listeners": [
+    "tcp://0.0.0.0:9002"
+  ],
+  "contacts": {
+    "c2573b864d094be039b90bce3785ef6eaba211166765cbf0bb72b8003bb4e42b": {
+      "publicKey": "c2573b864d094be039b90bce3785ef6eaba211166765cbf0bb72b8003bb4e42b",
+      "nickname": "Alice"
+    }
+  },
+  "username": "Bob"
+}
