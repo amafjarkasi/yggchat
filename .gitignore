@@ -21,11 +21,16 @@
 .DS_Store
 Thumbs.db
 
-# Config files with secrets (uncomment if needed)
-# yggchat.json
-# *_history.json
-# *_pending.json
+# Config files with secrets
+*.json
+!web/*.json
+*_history.json
+*_pending.json
 
 # Downloads folder contents
 downloads/*
 !downloads/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc

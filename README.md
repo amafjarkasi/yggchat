@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo-v2.png" width="180" height="180" alt="Yggdrasil Mesh Chat Logo" />
+  <img src="assets/logo-v2.png" width="180" height="180" alt="Yggdrasil Mesh Chat Logo" />
 </p>
 
 <h1 align="center">⚡ YGGDRASIL MESH CHAT ⚡</h1>
@@ -379,15 +379,22 @@ yggchat/
 ├── tui.go                  # Terminal UI (Bubble Tea framework)
 ├── ui_styles.go            # Theme definitions (5 color schemes)
 ├── image_render.go         # ANSI image preview renderer
-├── web/
-│   ├── index.html          # Web console HTML structure
+├── assets/                 # Static assets
+│   ├── logo-v2.png         # Main logo (PNG)
+│   ├── logo.jpg            # Logo (JPG)
+│   ├── logo_small.png      # Small logo (160x160)
+│   └── logo_square.png     # Square logo for social previews
+├── scripts/                # Utility scripts
+│   └── generate_logo.py    # Logo generation script
+├── web/                    # Web console frontend
+│   ├── index.html          # HTML structure
 │   ├── index.css           # Glassmorphic CSS styling
 │   └── index.js            # Client-side JavaScript logic
+├── downloads/              # Received files (gitignored)
 ├── go.mod                  # Go module dependencies
 ├── go.sum                  # Dependency checksums
 ├── .gitignore              # Git ignore rules
-├── README.md               # This file
-└── logo.png                # Application logo
+└── README.md               # This file
 ```
 
 ### Data Flow
