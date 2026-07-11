@@ -410,56 +410,140 @@ yggchat/
 
 ### Prerequisites
 
-- **Go 1.20+** (download from [golang.org](https://golang.org/dl/))
-- **Git** (for cloning the repository)
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| **Go** | 1.20+ | Download from [golang.org](https://golang.org/dl/) |
+| **Git** | Any | For cloning the repository |
+| **OS** | Windows/macOS/Linux/FreeBSD | Cross-platform support |
+| **Disk Space** | 50 MB | For source + build artifacts |
+| **RAM** | 50 MB minimum | 100 MB recommended |
 
-### Build from Source
+### Option 1: Build from Source (Recommended)
 
 ```bash
 # Clone the repository
 git clone https://github.com/amafjarkasi/yggchat.git
 cd yggchat
 
-# Build the executable
-go build -o yggchat.exe
+# Download dependencies
+go mod tidy
 
-# Or build for Linux
-GOOS=linux GOARCH=amd64 go build -o yggchat
+# Build for your current platform
+go build -o yggchat
 
-# Or build for macOS
-GOOS=darwin GOARCH=arm64 go build -o yggchat
+# Verify the build
+./yggchat --help
 ```
 
-### Run Tests
+### Option 2: Cross-Platform Builds
+
+Build for different operating systems and architectures:
+
+```bash
+# Windows (64-bit)
+GOOS=windows GOARCH=amd64 go build -o yggchat.exe
+
+# Windows (32-bit)
+GOOS=windows GOARCH=386 go build -o yggchat32.exe
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o yggchat-mac-intel
+
+# macOS (Apple Silicon M1/M2/M3)
+GOOS=darwin GOARCH=arm64 go build -o yggchat-mac-arm
+
+# Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o yggchat-linux
+
+# Linux (ARM - Raspberry Pi)
+GOOS=linux GOARCH=arm GOARM=7 go build -o yggchat-pi
+
+# Linux (ARM64 - Raspberry Pi 4)
+GOOS=linux GOARCH=arm64 go build -o yggchat-pi4
+
+# FreeBSD
+GOOS=freebsd GOARCH=amd64 go build -o yggchat-freebsd
+```
+
+### Option 3: Optimized Production Build
+
+```bash
+# Strip debug info and reduce binary size
+go build -ldflags="-s -w" -o yggchat
+
+# Build with version info
+go build -ldflags="-X main.Version=1.0.0 -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o yggchat
+```
+
+### Running Tests
 
 ```bash
 # Run all tests
 go test -v ./...
 
-# Run specific test
-go test -v -run TestECDHKeyExchange
+# Run specific test suites
+go test -v -run TestECDHKeyExchange        # Cryptography tests
+go test -v -run TestSafeSenderName         # Security helper tests
+go test -v -run TestSanitizeFilename       # Input validation tests
+go test -v -run TestConfigLoadSave         # Configuration tests
+go test -v -run TestIsContactRequestAllowed # Rate limiting tests
 
-# Run with coverage
+# Run tests with coverage report
 go test -cover ./...
+
+# Run tests with detailed coverage
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out           # Opens HTML coverage report
+
+# Run benchmarks
+go test -bench=. ./...
 ```
 
 ### Quick Start
 
+After building, you can immediately start using the application:
+
 ```bash
-# Launch Web Console (default)
-./yggchat.exe
+# Launch Web Console (default - opens browser automatically)
+./yggchat
 
 # Launch Terminal TUI
-./yggchat.exe --tui
+./yggchat --tui
 
-# Custom port
-./yggchat.exe --port 9090
+# Custom port for Web Console
+./yggchat --port 9090
 
-# Custom config file
-./yggchat.exe --config alice.json
+# Use a custom config file (for multiple identities)
+./yggchat --config alice.json
 
-# Combine flags
-./yggchat.exe --tui --config bob.json
+# Combine multiple flags
+./yggchat --tui --config bob.json --port 8888
+```
+
+### CLI Flags Reference
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | `yggchat.json` | Configuration file path |
+| `--username` | (from config) | Override username |
+| `--tui` | `false` | Use Terminal UI instead of Web Console |
+| `--port` | `8080` | Port for Web Console HTTP server |
+
+### First Run Walkthrough
+
+```bash
+# 1. Build the application
+go build -o yggchat
+
+# 2. Run it (Web Console mode)
+./yggchat
+# Output: [🌍 Web Console Server running on http://127.0.0.1:8080]
+# Browser opens automatically
+
+# 3. Your node is now live on the Yggdrasil mesh!
+# 4. Check the Settings tab for your public key
+# 5. Share your public key with contacts
+# 6. Add contacts using /add command or the + button
 ```
 
 ---
@@ -827,45 +911,511 @@ go test -cover ./...
 
 ## 💡 Practical Use Cases
 
-### 1. Disaster Relief Operations
+### 1. Disaster Relief & Emergency Operations
 
-In areas without internet infrastructure:
-- Connect laptops via local Wi-Fi router
-- Nodes auto-discover via UDP multicast
-- Coordinate rescue operations securely
-- Share maps and documents P2P
+**Scenario**: A natural disaster (earthquake, hurricane, flood) has destroyed internet infrastructure. Emergency responders need to coordinate across a disaster zone.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **Zero Infrastructure Required**: No cell towers, no internet, no servers needed
+- **Instant Deployment**: Copy the single binary to laptops via USB drive
+- **Auto-Discovery**: Nodes find each other automatically on the same Wi-Fi network (even a basic router)
+- **Encrypted Coordination**: Sensitive location data and victim information stays encrypted
+- **File Sharing**: Share maps, medical records, evacuation routes directly P2P
+
+**Setup Example**:
+```bash
+# Emergency responder setup (takes 30 seconds)
+# 1. Copy yggchat binary to laptop
+# 2. Connect to local Wi-Fi router (no internet needed)
+./yggchat --config responder-alpha.json --username "Alpha Team"
+
+# 3. Other responders do the same
+# 4. Nodes auto-discover each other via UDP multicast
+# 5. Add team members by sharing public keys
+/add <alpha-team-key> "Alpha Team Lead"
+```
+
+**Real-World Benefits**:
+- Works in areas with zero cellular coverage
+- No dependency on external services that may be down
+- Coordination continues even if internet infrastructure is destroyed
+- Messages queue offline if a team member temporarily disconnects
+
+---
 
 ### 2. Development Team Communication
 
-On corporate or lab networks:
-- Zero dependency on external services
-- No IT approval needed for installation
-- Share code snippets and files directly
-- Encrypted by default for compliance
+**Scenario**: A software development team works in a secure lab environment where external services (Slack, Discord, Teams) are blocked by corporate firewall or security policy.
 
-### 3. Privacy-Focused Messaging
+**How Yggdrasil Mesh Chat Helps**:
+- **No External Dependencies**: Works entirely within the corporate network
+- **No IT Approval Needed**: Single binary, no installation required
+- **No Cloud Services**: All data stays on the local network
+- **Code Sharing**: Share code snippets, config files, logs directly
+- **Compliance**: E2EE by default meets security audit requirements
 
-For journalists, activists, or privacy advocates:
-- No accounts or phone numbers required
-- No metadata collection
-- End-to-end encrypted
-- Works over Tor or VPN
+**Setup Example**:
+```bash
+# Developer workstation setup
+# 1. Download binary (or build from source)
+go build -o yggchat
 
-### 4. Offline Events & Conferences
+# 2. Launch on workstation
+./yggchat --username "Alice - Backend"
 
-At conferences or events with poor connectivity:
-- Set up local mesh network
-- Attendees can chat without internet
-- Share presentations and documents
-- Works in remote venues
+# 3. All developers on same network auto-discover each other
+# 4. Add specific teammates
+/add <bob-key> "Bob - Frontend"
+/add <charlie-key> "Charlie - DevOps"
+
+# 5. Share files directly
+/send ./logs/error-2024-01-15.log
+/send ./configs/staging.env
+```
+
+**Real-World Benefits**:
+- No monthly SaaS subscription costs
+- No data leaves the corporate network
+- Works in air-gapped environments
+- Developers can use TUI from their terminal workflow
+
+---
+
+### 3. Journalism & Whistleblowing
+
+**Scenario**: A journalist needs to communicate securely with a source who cannot risk metadata exposure. Traditional messaging apps (Signal, WhatsApp) require phone numbers that can be traced.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **No Phone Numbers Required**: Identity is purely cryptographic keys
+- **No Metadata**: No central server knows who is talking to whom
+- **No Account Creation**: No email, no phone, no identity verification
+- **Works Over Tor**: Can be routed through Tor for additional anonymity
+- **Plausible Deniability**: No account history, no registration records
+
+**Setup Example**:
+```bash
+# Journalist setup (on a clean laptop)
+# 1. Boot from Tails OS or similar privacy-focused OS
+# 2. Connect through Tor or VPN
+# 3. Run with a disposable config
+./yggchat --config temp-source-interview.json --username "anon"
+
+# 4. Share public key through secure channel (Signal, in-person, dead drop)
+# 5. Source adds journalist's key
+# 6. All communication is E2EE with no metadata trail
+```
+
+**Security Considerations**:
+- Generate a fresh config for each sensitive source
+- Use Tails OS or Whonix for maximum anonymity
+- Verify contact keys through out-of-band channel
+- Delete config files after communication is complete
+
+---
+
+### 4. Conferences, Hackathons & Events
+
+**Scenario**: A tech conference or hackathon with 200+ attendees. The venue Wi-Fi is overloaded, cellular coverage is poor, and organizers need a reliable communication channel.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **Local Network Only**: Works on venue LAN without internet
+- **Auto-Scaling**: More nodes = stronger mesh network
+- **File Sharing**: Share presentations, code repos, slides directly
+- **Zero Setup for Attendees**: Just run the binary
+- **Fun & Engaging**: Retro TUI appeals to developer audiences
+
+**Setup Example**:
+```bash
+# Event organizer setup (before event)
+# 1. Set up a dedicated Wi-Fi network for the event
+# 2. Pre-install yggchat on event machines
+# 3. Create event-specific config
+
+# Attendee setup (takes 1 minute)
+./yggchat --config hackathon.json --username "Team-Phoenix"
+
+# 4. All attendees on same Wi-Fi auto-discover each other
+# 5. Create team channels by adding teammates
+/add <teammate1-key> "Phoenix - Lead"
+/add <teammate2-key> "Phoenix - Designer"
+
+# 6. Share project files
+/send ./project/README.md
+/send ./demo/presentation.pdf
+```
+
+**Event Benefits**:
+- No need to share Wi-Fi passwords for messaging
+- Works even if venue internet is unreliable
+- Attendees can continue communicating after leaving venue (via manual peering)
+- Great icebreaker activity (share public keys)
+
+---
 
 ### 5. Gaming & LAN Parties
 
-For local multiplayer coordination:
-- Zero-latency local messaging
-- Share game files and mods
-- No internet required
-- Fun retro TUI interface
+**Scenario**: A group of friends gathering for a LAN party. They want to coordinate gaming sessions, share game files, and trash-talk without relying on external services.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **Zero-Latency**: Direct LAN communication, no server round-trips
+- **File Sharing**: Share game mods, maps, save files directly
+- **No Accounts**: No Discord or Steam required
+- **Fun TUI**: Retro terminal interface fits the LAN party aesthetic
+- **Shake Command**: Annoy your friends with screen shakes!
+
+**Setup Example**:
+```bash
+# LAN party setup
+# Everyone connects to the same network switch or Wi-Fi
+
+# Player 1
+./yggchat --username "xX_ProGamer_Xx"
+
+# Player 2
+./yggchat --username "N00bSlayer"
+
+# Auto-discovery finds everyone on the network
+# Add friends
+/add <friend-key> "N00bSlayer"
+
+# Share game files
+/send ./mods/texture-pack.zip
+/send ./maps/custom-arena.bsp
+
+# Trash talk
+/shout GG no re!
+/shake
+```
+
+**Gaming Benefits**:
+- No latency (direct LAN connection)
+- No internet bandwidth consumed
+- Share large files without upload limits
+- Works in basements and rural areas without good internet
+
+---
+
+### 6. Military & Defense Communications
+
+**Scenario**: A military unit needs secure, serverless communication in the field where traditional communication infrastructure is unavailable or compromised.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **No Central Server**: Cannot be taken down by enemy action
+- **Encrypted by Default**: Military-grade Curve25519 + AES-256
+- **Works Over Any Network**: Radio, satellite, mesh, LAN
+- **Air-Gap Compatible**: Works on isolated networks
+- **Minimal Footprint**: Single binary, no dependencies
+
+**Security Features for Military Use**:
+- All keys generated locally, never transmitted in plaintext
+- No metadata leakage to any third party
+- Messages can be configured to auto-expire (manual deletion)
+- Works on hardened Linux systems
+
+---
+
+### 7. Rural & Remote Area Communication
+
+**Scenario**: Communities in rural areas with limited or no internet connectivity. Villages separated by mountains where cell towers don't reach.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **Works Over Long-Range Wi-Fi**: Can use directional antennas
+- **No ISP Required**: Pure peer-to-peer communication
+- **Low Bandwidth**: Minimal network overhead
+- **Solar Compatible**: Can run on low-power devices (Raspberry Pi)
+
+**Rural Setup Example**:
+```bash
+# Village A - Raspberry Pi with long-range antenna
+./yggchat --config village-a.json --username "Village-A-Hub"
+
+# Village B - Another Raspberry Pi
+./yggchat --config village-b.json --username "Village-B-Hub"
+
+# Manual peering over long-range link
+/peer tcp://10.0.0.2:9000
+
+# Residents connect to their village hub
+# Messages route through the mesh between villages
+```
+
+---
+
+### 8. Academic Research Networks
+
+**Scenario**: Researchers at different universities need to share sensitive research data (medical records, unpublished findings) that cannot go through commercial cloud services.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **HIPAA/GDPR Compatible**: No third-party data processors
+- **Direct Transfer**: Data goes researcher-to-researcher
+- **Audit Trail**: Local history logs for compliance
+- **Cross-Institution**: Works across university networks
+
+---
+
+### 9. Offshore & Maritime Communication
+
+**Scenario**: Ships at sea need to communicate with each other and with shore stations without satellite internet.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **Works Over Radio**: Can operate over HF/VHF radio links
+- **Store-and-Forward**: Messages queue until connection available
+- **Ship-to-Ship**: Direct communication between vessels
+- **Low Bandwidth**: Efficient protocol for limited links
+
+---
+
+### 10. Privacy-Conscious Personal Use
+
+**Scenario**: An individual who values privacy and doesn't want their messaging habits tracked by corporations.
+
+**How Yggdrasil Mesh Chat Helps**:
+- **No Cloud Sync**: Messages stay on your device
+- **No Analytics**: No tracking, no telemetry
+- **No Ads**: No advertising business model
+- **Open Source**: Fully auditable codebase
+- **Self-Sovereign**: You own your data completely
+
+---
+
+## 🚀 Deployment
+
+### Standalone Desktop Deployment
+
+The simplest deployment - just run the binary on your desktop:
+
+```bash
+# Windows
+yggchat.exe
+
+# macOS / Linux
+./yggchat
+```
+
+**When to Use**: Personal use, small teams, testing
+
+### LAN Server Deployment
+
+Deploy on a dedicated machine that stays online 24/7:
+
+```bash
+# On a Linux server
+# 1. Copy binary to server
+scp yggchat user@server:/opt/yggchat/
+
+# 2. Create systemd service
+sudo tee /etc/systemd/system/yggchat.service << EOF
+[Unit]
+Description=Yggdrasil Mesh Chat Server
+After=network.target
+
+[Service]
+Type=simple
+User=yggchat
+Group=yggchat
+WorkingDirectory=/opt/yggchat
+ExecStart=/opt/yggchat/yggchat --port 8080
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 3. Create service user
+sudo useradd -r -s /bin/false yggchat
+sudo chown -R yggchat:yggchat /opt/yggchat
+
+# 4. Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable yggchat
+sudo systemctl start yggchat
+
+# 5. Check status
+sudo systemctl status yggchat
+```
+
+**When to Use**: Team deployments, always-on nodes, office environments
+
+### Docker Deployment
+
+Containerized deployment for easy management:
+
+```dockerfile
+# Dockerfile
+FROM golang:1.21-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o yggchat
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /app/yggchat .
+COPY --from=builder /app/web ./web
+EXPOSE 8080 9000
+CMD ["./yggchat", "--port", "8080"]
+```
+
+```bash
+# Build and run
+docker build -t yggchat .
+docker run -d \
+  --name yggchat \
+  -p 8080:8080 \
+  -p 9000:9000 \
+  -v yggchat-data:/app/data \
+  yggchat
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  yggchat:
+    build: .
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    volumes:
+      - yggchat-data:/app
+    restart: unless-stopped
+
+volumes:
+  yggchat-data:
+```
+
+**When to Use**: Containerized environments, Kubernetes, cloud deployments
+
+### Raspberry Pi Deployment
+
+Deploy on a low-power Raspberry Pi for always-on mesh networking:
+
+```bash
+# On Raspberry Pi (ARM)
+# 1. Cross-compile for ARM
+GOOS=linux GOARCH=arm GOARM=7 go build -o yggchat-pi
+
+# 2. Copy to Pi
+scp yggchat-pi pi@raspberrypi:/home/pi/yggchat/
+
+# 3. SSH to Pi and run
+ssh pi@raspberrypi
+chmod +x yggchat-pi
+./yggchat-pi --username "Pi-Node"
+
+# 4. (Optional) Auto-start on boot
+crontab -e
+# Add: @reboot /home/pi/yggchat/yggchat-pi --username "Pi-Node"
+```
+
+**When to Use**: Home networks, IoT mesh, low-power deployments, rural networks
+
+### Multi-Node Mesh Deployment
+
+Deploy multiple nodes for redundancy:
+
+```bash
+# Node 1 - Primary (Office)
+./yggchat --config node1.json --port 8080 --username "Office-Primary"
+
+# Node 2 - Backup (Remote Office)
+./yggchat --config node2.json --port 8080 --username "Remote-Backup"
+
+# Node 3 - Mobile (Laptop)
+./yggchat --config node3.json --port 8080 --username "Mobile"
+
+# Nodes peer with each other
+# Node 2 connects to Node 1
+/peer tcp://office-ip:9000
+
+# Node 3 connects to both
+/peer tcp://office-ip:9000
+/peer tcp://remote-ip:9000
+```
+
+**When to Use**: High availability, geographic distribution, redundancy
+
+### Air-Gapped Network Deployment
+
+Deploy on networks with no internet access:
+
+```bash
+# On air-gapped machine
+# 1. Build on internet-connected machine
+go build -o yggchat
+
+# 2. Copy binary via USB drive
+cp yggchat /media/usb/
+
+# 3. On air-gapped machine
+./yggchat --config secure-lab.json
+
+# 4. All nodes on same LAN auto-discover
+# 5. Manual peering for segmented networks
+/peer tcp://10.0.1.5:9000
+```
+
+**When to Use**: Military, classified environments, secure labs, SCADA systems
+
+### Reverse Proxy Deployment (Nginx)
+
+For production web deployments with SSL:
+
+```nginx
+# /etc/nginx/sites-available/yggchat
+server {
+    listen 443 ssl;
+    server_name chat.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/chat.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/chat.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_read_timeout 86400;
+    }
+
+    location /events {
+        proxy_pass http://127.0.0.1:8080/events;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding off;
+    }
+}
+```
+
+**When to Use**: Public-facing deployments, SSL termination, domain names
+
+### Firewall Configuration
+
+Ensure the following ports are accessible:
+
+```bash
+# Linux (ufw)
+sudo ufw allow 8080/tcp   # Web Console
+sudo ufw allow 9000/tcp   # Yggdrasil peering
+sudo ufw allow 9999/udp   # Multicast discovery
+
+# Linux (iptables)
+iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+iptables -A INPUT -p tcp --dport 9000 -j ACCEPT
+iptables -A INPUT -p udp --dport 9999 -j ACCEPT
+
+# Windows (PowerShell as Admin)
+New-NetFirewallRule -DisplayName "Yggchat Web" -Direction Inbound -Port 8080 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Yggchat Peer" -Direction Inbound -Port 9000 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "Yggchat Discovery" -Direction Inbound -Port 9999 -Protocol UDP -Action Allow
+```
 
 ---
 
