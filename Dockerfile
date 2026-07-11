@@ -13,7 +13,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary
+# Build the binary (GOTOOLCHAIN=auto allows downloading required Go version)
+ENV GOTOOLCHAIN=auto
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o yggchat
 
 # Runtime stage

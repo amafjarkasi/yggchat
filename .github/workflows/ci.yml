@@ -27,9 +27,13 @@ jobs:
         run: go mod download
       
       - name: Run vet
+        env:
+          GOTOOLCHAIN: auto
         run: go vet ./...
       
       - name: Run tests
+        env:
+          GOTOOLCHAIN: auto
         run: go test -v -race -coverprofile=coverage.out ./...
       
       - name: Upload coverage
@@ -63,6 +67,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOTOOLCHAIN: auto
         run: |
           go build -ldflags="-s -w" -o yggchat-${{ matrix.goos }}-${{ matrix.goarch }}
       
