@@ -1,20 +1,22 @@
 # Build stage
 FROM golang:1.22-alpine AS builder
 
-# Install git for version info
+# Install git and required tools
 RUN apk add --no-cache git
 
 WORKDIR /app
 
 # Copy go mod files first for caching
 COPY go.mod go.sum ./
+
+# Set GOTOOLCHAIN to auto-download required version
+ENV GOTOOLCHAIN=auto
 RUN go mod download
 
 # Copy source code
 COPY . .
 
-# Build the binary (GOTOOLCHAIN=auto allows downloading required Go version)
-ENV GOTOOLCHAIN=auto
+# Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o yggchat
 
 # Runtime stage
