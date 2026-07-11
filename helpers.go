@@ -63,10 +63,16 @@ func EscapeHTML(s string) string {
 
 // SanitizeFilename removes path traversal components from filenames
 func SanitizeFilename(filename string) string {
+	// Normalize path separators: replace backslashes with forward slashes
+	// This ensures cross-platform compatibility
+	normalized := strings.ReplaceAll(filename, "\\", "/")
+	
 	// filepath.Base strips directory components, preventing path traversal
-	safe := filepath.Base(filename)
+	safe := filepath.Base(normalized)
+	
 	// Additional safety: remove null bytes and other problematic characters
 	safe = strings.ReplaceAll(safe, "\x00", "")
+	
 	if safe == "." || safe == ".." || safe == "" {
 		return "unnamed_file"
 	}
