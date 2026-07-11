@@ -291,19 +291,21 @@ Yggdrasil Mesh Chat is designed to protect against:
 
 ### Cryptographic Details
 
-```
-Key Exchange Flow:
-  Alice                          Bob
-    |                              |
-    |-- Contact Request + PubA -->|
-    |                              |
-    |<-- Contact Accept + PubB ---|
-    |                              |
-    SharedSecret = ECDH(PrivA, PubB) = ECDH(PrivB, PubA)
-    AESKey = SHA-256(SharedSecret)
-    |                              |
-    |-- AES-GCM(Key, Nonce, Msg) ->|
-    |<- AES-GCM(Key, Nonce, Msg) --|
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Bob
+    
+    Alice->>Bob: Contact Request + ECDH Public Key A
+    
+    Note over Alice,Bob: Both compute shared secret:<br/>SharedSecret = ECDH(PrivA, PubB) = ECDH(PrivB, PubA)<br/>AESKey = SHA-256(SharedSecret)
+    
+    Bob->>Alice: Contact Accept + ECDH Public Key B
+    
+    Note over Alice,Bob: Now both have the same AES-256 key
+    
+    Alice->>Bob: AES-GCM(Key, Nonce, Message)
+    Bob->>Alice: AES-GCM(Key, Nonce, Message)
 ```
 
 ### Security Best Practices
@@ -399,16 +401,24 @@ yggchat/
 
 ### Data Flow
 
-```
-1. User types message in Web/TUI
-2. Message sent to WebServer/TUI handler
-3. Handler checks if contact has shared secret (E2EE)
-4. If encrypted: AES-GCM encrypt with derived key
-5. Payload serialized as JSON with "YGGC" magic header
-6. YggManager sends packet via Yggdrasil overlay
-7. Recipient's YggManager receives packet
-8. Payload deserialized and decrypted if needed
-9. Message displayed in recipient's UI
+```mermaid
+flowchart TD
+    A[User Types Message] --> B[Web Console / TUI Handler]
+    B --> C{Has Shared Secret?}
+    C -->|Yes| D[AES-GCM Encrypt Message]
+    C -->|No| E[Send Plaintext]
+    D --> F[Serialize to JSON]
+    E --> F
+    F --> G[Add YGGC Magic Header]
+    G --> H[YggManager.sendPacket]
+    H --> I[Yggdrasil Overlay Network]
+    I --> J[Recipient YggManager]
+    J --> K[Deserialize JSON Payload]
+    K --> L{Is Encrypted?}
+    L -->|Yes| M[Decrypt with AES-GCM]
+    L -->|No| N[Use Plaintext]
+    M --> O[Display in Recipient UI]
+    N --> O
 ```
 
 ---
@@ -782,25 +792,53 @@ Override with: `--config <filename>`
 
 ### Key Exchange Protocol
 
-1. **Alice** generates ephemeral Curve25519 keypair
-2. **Alice** sends `contact_req` with her public key to **Bob**
-3. **Bob** generates ephemeral Curve25519 keypair
-4. **Bob** computes `SharedSecret = ECDH(PrivB, PubA)`
-5. **Bob** derives `AESKey = SHA-256(SharedSecret)`
-6. **Bob** sends `contact_acc` with his public key to **Alice**
-7. **Alice** computes same `SharedSecret = ECDH(PrivA, PubB)`
-8. Both now share the same AES-256 key
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Network as Yggdrasil Network
+    participant Bob
+    
+    Note over Alice: Generate ephemeral<br/>Curve25519 keypair
+    
+    Alice->>Network: contact_req + ECDH Public Key A
+    Network->>Bob: Deliver contact request
+    
+    Note over Bob: Generate ephemeral<br/>Curve25519 keypair
+    Note over Bob: Compute SharedSecret = ECDH(PrivB, PubA)
+    Note over Bob: Derive AESKey = SHA-256(SharedSecret)
+    
+    Bob->>Network: contact_acc + ECDH Public Key B
+    Network->>Alice: Deliver acceptance
+    
+    Note over Alice: Compute SharedSecret = ECDH(PrivA, PubB)
+    Note over Alice: Derive AESKey = SHA-256(SharedSecret)
+    
+    Note over Alice,Bob: Both now share the same AES-256 key
+    
+    Alice->>Network: AES-GCM Encrypted Message
+    Network->>Bob: Deliver encrypted message
+    Note over Bob: Decrypt with shared AES key
+```
 
 ### Message Encryption
 
-```go
-// Encryption
-nonce = random(12 bytes)
-ciphertext = AES-GCM-Seal(key, nonce, plaintext, aad)
-payload = {text: hex(ciphertext), nonce: hex(nonce), is_encrypted: true}
-
-// Decryption
-plaintext = AES-GCM-Open(key, nonce, ciphertext, aad)
+```mermaid
+flowchart LR
+    subgraph Encryption
+        A[Plaintext Message] --> B[Generate Random Nonce<br/>12 bytes]
+        B --> C[AES-GCM-Seal<br/>Key + Nonce + Plaintext]
+        C --> D[Ciphertext]
+        D --> E[Hex Encode]
+        E --> F[JSON Payload]
+    end
+    
+    subgraph Decryption
+        G[Receive Payload] --> H[Hex Decode]
+        H --> I[AES-GCM-Open<br/>Key + Nonce + Ciphertext]
+        I --> J[Plaintext Message]
+    end
+    
+    F -->|Network| G
 ```
 
 ### Security Properties
@@ -817,12 +855,22 @@ plaintext = AES-GCM-Open(key, nonce, ciphertext, aad)
 
 ### Multicast Discovery Protocol
 
-```
-Every 5 seconds:
-1. Get local IPv4 addresses
-2. For each address, broadcast: "tcp://<ip>:<port>"
-3. Listen for broadcasts from other nodes
-4. If received URI is not self, add as peer
+```mermaid
+flowchart TD
+    A[Start Discovery Loop] --> B[Wait 5 Seconds]
+    B --> C[Get Local IPv4 Addresses]
+    C --> D{For Each Address}
+    D --> E[Broadcast UDP Multicast<br/>224.0.0.50:9999]
+    E --> F[Send: tcp://ip:port]
+    F --> D
+    D -->|Done| G[Listen for Incoming Broadcasts]
+    G --> H{Received URI?}
+    H -->|Yes| I{Is Self?}
+    I -->|No| J[Add as Peer]
+    I -->|Yes| K[Ignore]
+    J --> G
+    K --> G
+    H -->|No| B
 ```
 
 ### Manual Peering
