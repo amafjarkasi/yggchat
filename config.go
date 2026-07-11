@@ -14,6 +14,8 @@ type Contact struct {
 	PublicKey    string `json:"publicKey"`
 	Nickname     string `json:"nickname"`
 	SharedSecret string `json:"sharedSecret,omitempty"` // hex-encoded AES key for E2EE
+	Group        string `json:"group,omitempty"`         // Contact group (e.g., "Friends", "Work")
+	Blocked      bool   `json:"blocked,omitempty"`       // Whether contact is blocked
 }
 
 type AppConfig struct {
@@ -23,6 +25,30 @@ type AppConfig struct {
 	Listeners      []string           `json:"listeners"`
 	Contacts       map[string]Contact `json:"contacts"`
 	Username       string             `json:"username"`
+	
+	// New feature settings
+	AutoDeleteDays int                `json:"autoDeleteDays,omitempty"`  // Auto-delete messages after N days (0 = disabled)
+	ShowTyping     bool               `json:"showTyping,omitempty"`      // Show typing indicators
+	ShowReadReceipts bool             `json:"showReadReceipts,omitempty"` // Show read receipts
+	NotificationSound string          `json:"notificationSound,omitempty"` // Notification sound theme
+	CustomTheme    *CustomThemeConfig `json:"customTheme,omitempty"`     // Custom theme colors
+}
+
+type CustomThemeConfig struct {
+	Name    string `json:"name"`
+	Base    string `json:"base"`
+	Mantle  string `json:"mantle"`
+	Crust   string `json:"crust"`
+	Text    string `json:"text"`
+	Subtext string `json:"subtext"`
+	Muted   string `json:"muted"`
+	Overlay string `json:"overlay"`
+	Primary string `json:"primary"`
+	Accent  string `json:"accent"`
+	Success string `json:"success"`
+	Warning string `json:"warning"`
+	Error   string `json:"error"`
+	Info    string `json:"info"`
 }
 
 var configFilename = "yggchat.json"

@@ -557,3 +557,644 @@ async function postAPI(url, data) {
         console.error("POST failed", err);
     }
 }
+
+// ============================================================
+// NEW FEATURES
+// ============================================================
+
+// ---- REPLY FEATURE ----
+let replyingTo = null; // {timestamp, text, sender}
+
+function replyToMessage(timestamp, text, sender) {
+    replyingTo = { timestamp, text, sender };
+    const input = document.getElementById('chat-input-field');
+    input.placeholder = `Replying to ${sender}: "${text.substring(0, 30)}..."`;
+    input.focus();
+}
+
+function cancelReply() {
+    replyingTo = null;
+    const input = document.getElementById('chat-input-field');
+    input.placeholder = "Type a message or press Tab for commands...";
+}
+
+async function sendReply(text) {
+    if (!replyingTo) return false;
+    
+    await postAPI('/api/send', {
+        type: 'reply',
+        dest: activeChatKey,
+        text: text,
+        replyTo: replyingTo.timestamp
+    });
+    
+    cancelReply();
+    return true;
+}
+
+// ---- REACTION FEATURE ----
+async function sendReaction(emoji, messageTimestamp) {
+    await postAPI('/api/send', {
+        type: 'reaction',
+        dest: activeChatKey,
+        reaction: emoji,
+        replyTo: messageTimestamp
+    });
+}
+
+function showReactionPicker(messageTimestamp, element) {
+    // Remove existing picker
+    const existing = document.querySelector('.reaction-picker');
+    if (existing) existing.remove();
+    
+    const emojis = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '🎉'];
+    const picker = document.createElement('div');
+    picker.className = 'reaction-picker';
+    picker.style.cssText = `
+        position: absolute;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        display: flex;
+        gap: 4px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+    
+    emojis.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.textContent = emoji;
+        btn.style.cssText = `
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        `;
+        btn.onmouseover = () => btn.style.background = 'var(--overlay)';
+        btn.onmouseout = () => btn.style.background = 'none';
+        btn.onclick = () => {
+            sendReaction(emoji, messageTimestamp);
+            picker.remove();
+        };
+        picker.appendChild(btn);
+    });
+    
+    element.style.position = 'relative';
+    element.appendChild(picker);
+    
+    // Close on outside click
+    setTimeout(() => {
+        document.addEventListener('click', function closePicker(e) {
+            if (!picker.contains(e.target)) {
+                picker.remove();
+                document.removeEventListener('click', closePicker);
+            }
+        });
+    }, 100);
+}
+
+// ---- EDIT FEATURE ----
+async function editMessage(timestamp, newText) {
+    await postAPI('/api/send', {
+        type: 'edit',
+        dest: activeChatKey,
+        text: newText,
+        editID: timestamp
+    });
+}
+
+function promptEdit(timestamp, currentText) {
+    const newText = prompt('Edit message:', currentText);
+    if (newText && newText !== currentText) {
+        editMessage(timestamp, newText);
+    }
+}
+
+// ---- DELETE FEATURE ----
+async function deleteMessage(timestamp) {
+    if (!confirm('Delete this message?')) return;
+    
+    await postAPI('/api/send', {
+        type: 'delete',
+        dest: activeChatKey,
+        deleteID: timestamp
+    });
+}
+
+// ---- BLOCK FEATURE ----
+async function blockContact(key) {
+    if (!confirm('Block this contact?')) return;
+    
+    await postAPI('/api/send', {
+        type: 'block',
+        dest: key
+    });
+    
+    setTimeout(initApp, 500);
+}
+
+async function unblockContact(key) {
+    await postAPI('/api/send', {
+        type: 'unblock',
+        dest: key
+    });
+    
+    setTimeout(initApp, 500);
+}
+
+// ---- DESKTOP NOTIFICATIONS ----
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function showDesktopNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+            body: body,
+            icon: '/assets/logo-v2.png',
+            tag: 'yggchat'
+        });
+    }
+}
+
+// ---- DRAG & DROP FILES ----
+function setupDragDrop() {
+    const dropZone = document.getElementById('chat-messages-container');
+    if (!dropZone) return;
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            executeSlashCommand(`/send ${file.name}`);
+        }
+    });
+}
+
+// ---- EMOJI PICKER ----
+let emojiPickerOpen = false;
+
+function toggleEmojiPicker() {
+    const picker = document.getElementById('emoji-picker');
+    if (!picker) return;
+    
+    emojiPickerOpen = !emojiPickerOpen;
+    picker.style.display = emojiPickerOpen ? 'block' : 'none';
+    
+    if (emojiPickerOpen && picker.children.length === 0) {
+        initEmojiPicker(picker);
+    }
+}
+
+function initEmojiPicker(container) {
+    const emojis = [
+        '😀', '😂', '🥰', '😎', '🤔', '😮', '😢', '😡',
+        '👍', '👎', '❤️', '🔥', '🎉', '👏', '🙏', '💪',
+        '✅', '❌', '⭐', '💯', '🎮', '🎵', '📱', '💻',
+        'Hello', 'Bye', 'Thanks', 'OK', 'Yes', 'No', 'Maybe', 'Sorry'
+    ];
+    
+    container.style.cssText = `
+        position: absolute;
+        bottom: 100%;
+        right: 0;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 4px;
+        max-width: 300px;
+        z-index: 100;
+    `;
+    
+    emojis.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.textContent = emoji;
+        btn.style.cssText = `
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        `;
+        btn.onmouseover = () => btn.style.background = 'var(--overlay)';
+        btn.onmouseout = () => btn.style.background = 'none';
+        btn.onclick = () => {
+            const input = document.getElementById('chat-input-field');
+            input.value += emoji;
+            input.focus();
+            toggleEmojiPicker();
+        };
+        container.appendChild(btn);
+    });
+}
+
+// ---- SEARCH FILTERS ----
+function searchMessages(query) {
+    if (!query || !activeChatKey) return [];
+    
+    const messages = history[activeChatKey] || [];
+    const lowerQuery = query.toLowerCase();
+    
+    return messages.filter(msg => {
+        const plainMsg = msg.replace(/<[^>]*>/g, '').toLowerCase();
+        return plainMsg.includes(lowerQuery);
+    });
+}
+
+function highlightSearchResults(query) {
+    const container = document.getElementById('chat-messages-container');
+    const messages = container.querySelectorAll('.msg-bubble');
+    
+    messages.forEach(msg => {
+        const text = msg.textContent;
+        if (text.toLowerCase().includes(query.toLowerCase())) {
+            msg.style.background = 'rgba(224, 175, 104, 0.2)';
+            msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            msg.style.background = '';
+        }
+    });
+}
+
+// ---- CONNECTION STATS ----
+function updateConnectionStats(peersData) {
+    const statsContainer = document.getElementById('connection-stats');
+    if (!statsContainer) return;
+    
+    const onlinePeers = peersData.filter(p => p.Up).length;
+    const totalPeers = peersData.length;
+    const avgLatency = peersData.filter(p => p.LatencyMs > 0)
+        .reduce((sum, p) => sum + p.LatencyMs, 0) / (onlinePeers || 1);
+    
+    statsContainer.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-label">Online:</span>
+            <span class="stat-value">${onlinePeers}/${totalPeers}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Avg Latency:</span>
+            <span class="stat-value">${Math.round(avgLatency)}ms</span>
+        </div>
+    `;
+}
+
+// ---- MARKDOWN SUPPORT ----
+function parseMarkdown(text) {
+    if (!text) return text;
+    
+    // Bold: **text** or __text__
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italic: *text* or _text_
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    // Code: `text`
+    text = text.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    // Code block: ```text```
+    text = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    
+    // Strikethrough: ~~text~~
+    text = text.replace(/~~(.*?)~~/g, '<del>$1</del>');
+    
+    // Links: [text](url)
+    text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+    
+    return text;
+}
+
+// ---- BROADCAST LISTS ----
+async function broadcastMessage(text) {
+    const contactKeys = Object.keys(contacts);
+    let sent = 0;
+    
+    for (const key of contactKeys) {
+        if (contacts[key].blocked) continue;
+        
+        try {
+            await postAPI('/api/send', {
+                type: 'chat',
+                dest: key,
+                text: text
+            });
+            sent++;
+        } catch (err) {
+            console.error(`Failed to send to ${key}:`, err);
+        }
+    }
+    
+    return sent;
+}
+
+// ---- VIDEO PREVIEWS ----
+function isVideoFile(filename) {
+    const ext = filename.toLowerCase().split('.').pop();
+    return ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext);
+}
+
+function createVideoPreview(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const mimeTypes = {
+        'mp4': 'video/mp4',
+        'webm': 'video/webm',
+        'ogg': 'video/ogg',
+        'mov': 'video/quicktime'
+    };
+    
+    return `
+        <div class="video-preview">
+            <video controls width="300" preload="metadata">
+                <source src="/downloads/${filename}" type="${mimeTypes[ext] || 'video/mp4'}">
+                Your browser does not support video playback.
+            </video>
+            <div class="video-info">
+                <span>🎬 ${filename}</span>
+            </div>
+        </div>
+    `;
+}
+
+// ---- PANIC BUTTON ----
+async function panicButton() {
+    if (!confirm('⚠️ WARNING: This will delete ALL chat history, contacts, and configuration. This cannot be undone. Continue?')) {
+        return;
+    }
+    
+    if (!confirm('Are you absolutely sure? Type "DELETE" in the next prompt.')) {
+        return;
+    }
+    
+    const confirmText = prompt('Type "DELETE" to confirm:');
+    if (confirmText !== 'DELETE') {
+        alert('Cancelled.');
+        return;
+    }
+    
+    // Clear local data
+    history = {};
+    contacts = {};
+    
+    // Call API to clear server data
+    await postAPI('/api/send', {
+        type: 'command',
+        text: '/clear',
+        dest: ''
+    });
+    
+    // Clear local storage
+    localStorage.clear();
+    
+    alert('All data has been deleted.');
+    location.reload();
+}
+
+// ---- CONNECTION GRAPH ----
+function renderConnectionGraph(peersData) {
+    const container = document.getElementById('connection-graph');
+    if (!container) return;
+    
+    const onlinePeers = peersData.filter(p => p.Up);
+    const offlinePeers = peersData.filter(p => !p.Up);
+    
+    let html = `
+        <div class="graph-container">
+            <div class="graph-center">
+                <div class="node self">You</div>
+            </div>
+            <div class="graph-connections">
+    `;
+    
+    onlinePeers.forEach((peer, i) => {
+        const angle = (i / onlinePeers.length) * 360;
+        html += `
+            <div class="connection-line" style="--angle: ${angle}deg">
+                <div class="node peer online" title="${peer.URI}">
+                    ${peer.URI.split('//')[1]?.split(':')[0] || 'Peer'}
+                    <span class="latency">${peer.LatencyMs}ms</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    offlinePeers.forEach((peer, i) => {
+        const angle = ((i + onlinePeers.length) / peersData.length) * 360;
+        html += `
+            <div class="connection-line offline" style="--angle: ${angle}deg">
+                <div class="node peer offline" title="${peer.URI}">
+                    ${peer.URI.split('//')[1]?.split(':')[0] || 'Peer'}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+// ---- AUTO-RECONNECT ----
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 3000;
+
+function setupAutoReconnect() {
+    if (!eventSource) return;
+    
+    eventSource.onerror = (e) => {
+        reconnectAttempts++;
+        
+        if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+            console.log(`Reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}...`);
+            document.getElementById('mesh-status-dot').className = 'pulse-dot';
+            document.getElementById('header-mesh-status').textContent = `(RECONNECTING ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`;
+            
+            setTimeout(() => {
+                connectEventSource();
+            }, RECONNECT_DELAY * reconnectAttempts); // Exponential backoff
+        } else {
+            console.error('Max reconnect attempts reached');
+            document.getElementById('header-mesh-status').textContent = '(DISCONNECTED)';
+        }
+    };
+    
+    eventSource.onopen = () => {
+        reconnectAttempts = 0;
+        document.getElementById('mesh-status-dot').className = 'pulse-dot active';
+        document.getElementById('header-mesh-status').textContent = '(ONLINE)';
+    };
+}
+
+// ---- BANDWIDTH MONITOR ----
+let bandwidthStats = {
+    bytesReceived: 0,
+    bytesSent: 0,
+    startTime: Date.now()
+};
+
+function updateBandwidthStats(bytesReceived, bytesSent) {
+    bandwidthStats.bytesReceived += bytesReceived;
+    bandwidthStats.bytesSent += bytesSent;
+    
+    const elapsed = (Date.now() - bandwidthStats.startTime) / 1000;
+    const receiveRate = bandwidthStats.bytesReceived / elapsed;
+    const sendRate = bandwidthStats.bytesSent / elapsed;
+    
+    return {
+        totalReceived: formatBytes(bandwidthStats.bytesReceived),
+        totalSent: formatBytes(bandwidthStats.bytesSent),
+        receiveRate: formatBytes(receiveRate) + '/s',
+        sendRate: formatBytes(sendRate) + '/s'
+    };
+}
+
+// ---- INIT NEW FEATURES ----
+document.addEventListener('DOMContentLoaded', () => {
+    requestNotificationPermission();
+    setupDragDrop();
+    setupAutoReconnect();
+    
+    // Add emoji button
+    const sendBtn = document.getElementById('send-msg-btn');
+    if (sendBtn) {
+        const emojiBtn = document.createElement('button');
+        emojiBtn.className = 'btn btn-icon';
+        emojiBtn.textContent = '😊';
+        emojiBtn.title = 'Emoji Picker';
+        emojiBtn.onclick = toggleEmojiPicker;
+        sendBtn.parentNode.insertBefore(emojiBtn, sendBtn);
+        
+        // Add emoji picker container
+        const picker = document.createElement('div');
+        picker.id = 'emoji-picker';
+        picker.style.display = 'none';
+        sendBtn.parentNode.appendChild(picker);
+    }
+    
+    // Add keyboard shortcut for reply (R key)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && replyingTo) {
+            cancelReply();
+        }
+    });
+    
+    // Add drag-over styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .drag-over {
+            background: rgba(122, 162, 247, 0.1) !important;
+            border: 2px dashed var(--primary) !important;
+        }
+        .reaction-picker {
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg-bubble code {
+            background: var(--overlay);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .msg-bubble pre {
+            background: var(--surface);
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+        .msg-bubble pre code {
+            background: none;
+            padding: 0;
+        }
+        .msg-bubble a {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+        .video-preview {
+            margin: 8px 0;
+        }
+        .video-preview video {
+            border-radius: 8px;
+            max-width: 100%;
+        }
+        .graph-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .graph-center {
+            position: absolute;
+            z-index: 10;
+        }
+        .graph-connections {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        .connection-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0;
+            transform: rotate(var(--angle));
+        }
+        .node {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .node.self {
+            background: var(--primary);
+            color: var(--crust);
+            font-weight: bold;
+        }
+        .node.peer.online {
+            background: var(--success);
+            color: var(--crust);
+        }
+        .node.peer.offline {
+            background: var(--error);
+            color: var(--crust);
+            opacity: 0.6;
+        }
+        .latency {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+    `;
+    document.head.appendChild(style);
+});

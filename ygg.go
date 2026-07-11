@@ -24,7 +24,7 @@ type ChatPayload struct {
 	SenderName  string `json:"sender_name"`
 	Text        string `json:"text"`
 	Timestamp   int64  `json:"timestamp"`
-	Type        string `json:"type,omitempty"` // "chat", "ping", "pong", "contact_req", "contact_acc", "file_chunk", "read"
+	Type        string `json:"type,omitempty"` // "chat", "ping", "pong", "contact_req", "contact_acc", "file_chunk", "read", "reaction", "edit", "delete", "reply"
 	FileName    string `json:"filename,omitempty"`
 	ChunkIdx    int    `json:"chunk_idx,omitempty"`
 	TotalChunks int    `json:"total_chunks,omitempty"`
@@ -34,6 +34,13 @@ type ChatPayload struct {
 	ECDHPubKey  string `json:"ecdh_pubkey,omitempty"`
 	Nonce       string `json:"nonce,omitempty"`
 	IsEncrypted bool   `json:"is_encrypted,omitempty"`
+	
+	// New feature fields
+	ReplyTo     int64  `json:"reply_to,omitempty"`     // Timestamp of message being replied to
+	Reaction    string `json:"reaction,omitempty"`      // Emoji reaction
+	EditID      int64  `json:"edit_id,omitempty"`       // Timestamp of message being edited
+	DeleteID    int64  `json:"delete_id,omitempty"`     // Timestamp of message being deleted
+	MessageID   int64  `json:"message_id,omitempty"`    // Unique message ID (timestamp)
 }
 
 type IncomingMessage struct {
@@ -440,6 +447,55 @@ func (y *YggManager) SendTypingIndicator(destKeyHex string, senderName string) e
 		SenderName: senderName,
 		Timestamp:  time.Now().Unix(),
 		Type:       "typing",
+	}
+	return y.sendPacket(destKeyHex, payload)
+}
+
+// SendReplyMessage sends a reply to a specific message
+func (y *YggManager) SendReplyMessage(destKeyHex string, senderName string, text string, replyToTimestamp int64) error {
+	payload := ChatPayload{
+		SenderName: senderName,
+		Text:       text,
+		Timestamp:  time.Now().Unix(),
+		Type:       "reply",
+		ReplyTo:    replyToTimestamp,
+		MessageID:  time.Now().UnixNano(),
+	}
+	return y.sendPacket(destKeyHex, payload)
+}
+
+// SendReaction sends an emoji reaction to a message
+func (y *YggManager) SendReaction(destKeyHex string, senderName string, emoji string, messageTimestamp int64) error {
+	payload := ChatPayload{
+		SenderName: senderName,
+		Timestamp:  time.Now().Unix(),
+		Type:       "reaction",
+		Reaction:   emoji,
+		ReplyTo:    messageTimestamp,
+	}
+	return y.sendPacket(destKeyHex, payload)
+}
+
+// SendEditMessage sends an edited version of a message
+func (y *YggManager) SendEditMessage(destKeyHex string, senderName string, newText string, editTimestamp int64) error {
+	payload := ChatPayload{
+		SenderName: senderName,
+		Text:       newText,
+		Timestamp:  time.Now().Unix(),
+		Type:       "edit",
+		EditID:     editTimestamp,
+		MessageID:  time.Now().UnixNano(),
+	}
+	return y.sendPacket(destKeyHex, payload)
+}
+
+// SendDeleteMessage sends a delete request for a message
+func (y *YggManager) SendDeleteMessage(destKeyHex string, senderName string, deleteTimestamp int64) error {
+	payload := ChatPayload{
+		SenderName: senderName,
+		Timestamp:  time.Now().Unix(),
+		Type:       "delete",
+		DeleteID:   deleteTimestamp,
 	}
 	return y.sendPacket(destKeyHex, payload)
 }

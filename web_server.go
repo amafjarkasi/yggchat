@@ -322,6 +322,76 @@ func (s *WebServer) handleSend(w http.ResponseWriter, r *http.Request) {
 
 	case "command":
 		s.handleSlashCommand(req.Text, req.Dest)
+		
+	case "reply":
+		contact, hasContact := s.cfg.Contacts[req.Dest]
+		var err error
+		if hasContact && contact.SharedSecret != "" {
+			err = s.ygg.SendReplyMessage(req.Dest, s.cfg.Username, req.Text, req.ReplyTo)
+		} else {
+			err = s.ygg.SendReplyMessage(req.Dest, s.cfg.Username, req.Text, req.ReplyTo)
+		}
+		
+		if err == nil {
+			nameTag := fmt.Sprintf(`<span style="color: #7aa2f7; font-weight: bold;">%s</span>`, EscapeHTML(s.cfg.Username))
+			bubble := fmt.Sprintf("[%s] %s (reply): %s✓", timeStr, nameTag, EscapeHTML(req.Text))
+			s.mu.Lock()
+			history := LoadHistory()
+			history[req.Dest] = append(history[req.Dest], bubble)
+			_ = SaveHistory(history)
+			s.mu.Unlock()
+		}
+		
+	case "reaction":
+		_ = s.ygg.SendReaction(req.Dest, s.cfg.Username, req.Reaction, req.ReplyTo)
+		
+	case "edit":
+		_ = s.ygg.SendEditMessage(req.Dest, s.cfg.Username, req.Text, req.EditID)
+		// Update local history
+		s.mu.Lock()
+		history := LoadHistory()
+		if msgs, ok := history[req.Dest]; ok {
+			for i, msg := range msgs {
+				if strings.Contains(msg, fmt.Sprintf("%d", req.EditID)) {
+					history[req.Dest][i] = fmt.Sprintf("[%s] %s (edited): %s", timeStr, EscapeHTML(s.cfg.Username), EscapeHTML(req.Text))
+					break
+				}
+			}
+		}
+		_ = SaveHistory(history)
+		s.mu.Unlock()
+		
+	case "delete":
+		_ = s.ygg.SendDeleteMessage(req.Dest, s.cfg.Username, req.DeleteID)
+		// Remove from local history
+		s.mu.Lock()
+		history := LoadHistory()
+		if msgs, ok := history[req.Dest]; ok {
+			for i, msg := range msgs {
+				if strings.Contains(msg, fmt.Sprintf("%d", req.DeleteID)) {
+					history[req.Dest] = append(msgs[:i], msgs[i+1:]...)
+					break
+				}
+			}
+		}
+		_ = SaveHistory(history)
+		s.mu.Unlock()
+		
+	case "block":
+		if contact, ok := s.cfg.Contacts[req.Dest]; ok {
+			contact.Blocked = true
+			s.cfg.Contacts[req.Dest] = contact
+			_ = s.cfg.Save()
+			s.appendAndBroadcastSystemMsg(req.Dest, fmt.Sprintf("[%s] SYSTEM: Contact blocked", timeStr))
+		}
+		
+	case "unblock":
+		if contact, ok := s.cfg.Contacts[req.Dest]; ok {
+			contact.Blocked = false
+			s.cfg.Contacts[req.Dest] = contact
+			_ = s.cfg.Save()
+			s.appendAndBroadcastSystemMsg(req.Dest, fmt.Sprintf("[%s] SYSTEM: Contact unblocked", timeStr))
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -649,7 +719,79 @@ func (s *WebServer) startIncomingPacketLoop() {
 			})
 			s.BroadcastEvent("incoming_msg", string(evtData))
 
-			default:
+		case "reply":
+			// Handle reply message
+			text := msg.Payload.Text
+			if msg.Payload.IsEncrypted {
+				if contact, ok := s.cfg.Contacts[senderKey]; ok && contact.SharedSecret != "" {
+					decrypted, err := DecryptMessage(contact.SharedSecret, msg.Payload.Text, msg.Payload.Nonce)
+					if err == nil {
+						text = decrypted
+					}
+				}
+			}
+			nameTag := fmt.Sprintf(`<span style="color: #cba6f7; font-weight: bold;">%s</span>`, EscapeHTML(senderName))
+			bubble := fmt.Sprintf("[%s] %s (reply): %s", timeStr, nameTag, EscapeHTML(text))
+			s.mu.Lock()
+			history := LoadHistory()
+			history[senderKey] = append(history[senderKey], bubble)
+			_ = SaveHistory(history)
+			s.mu.Unlock()
+			replyEvtData, _ := json.Marshal(map[string]interface{}{
+				"sender_key": senderKey,
+				"bubble":     bubble,
+				"reply_to":   msg.Payload.ReplyTo,
+			})
+			s.BroadcastEvent("incoming_msg", string(replyEvtData))
+
+		case "reaction":
+			evtData, _ := json.Marshal(map[string]interface{}{
+				"sender_key": senderKey,
+				"emoji":      msg.Payload.Reaction,
+				"message_id": msg.Payload.ReplyTo,
+			})
+			s.BroadcastEvent("reaction", string(evtData))
+
+		case "edit":
+			s.mu.Lock()
+			history := LoadHistory()
+			if msgs, ok := history[senderKey]; ok {
+				for i, msgLine := range msgs {
+					if strings.Contains(msgLine, fmt.Sprintf("%d", msg.Payload.EditID)) {
+						history[senderKey][i] = fmt.Sprintf("[%s] %s (edited): %s", timeStr, EscapeHTML(senderName), EscapeHTML(msg.Payload.Text))
+						break
+					}
+				}
+			}
+			_ = SaveHistory(history)
+			s.mu.Unlock()
+			editEvtData, _ := json.Marshal(map[string]interface{}{
+				"sender_key": senderKey,
+				"edit_id":    msg.Payload.EditID,
+				"new_text":   msg.Payload.Text,
+			})
+			s.BroadcastEvent("edit", string(editEvtData))
+
+		case "delete":
+			s.mu.Lock()
+			history := LoadHistory()
+			if msgs, ok := history[senderKey]; ok {
+				for i, msgLine := range msgs {
+					if strings.Contains(msgLine, fmt.Sprintf("%d", msg.Payload.DeleteID)) {
+						history[senderKey] = append(msgs[:i], msgs[i+1:]...)
+						break
+					}
+				}
+			}
+			_ = SaveHistory(history)
+			s.mu.Unlock()
+			deleteEvtData, _ := json.Marshal(map[string]interface{}{
+				"sender_key": senderKey,
+				"delete_id":  msg.Payload.DeleteID,
+			})
+			s.BroadcastEvent("delete", string(deleteEvtData))
+
+		default:
 			text := msg.Payload.Text
 			if msg.Payload.IsEncrypted {
 				if contact, ok := s.cfg.Contacts[senderKey]; ok && contact.SharedSecret != "" {
