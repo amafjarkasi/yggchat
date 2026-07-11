@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  yggchat:
+    build: .
+    container_name: yggchat
+    ports:
+      - "8080:8080"   # Web Console
+      - "9000:9000"   # Yggdrasil peering
+    volumes:
+      - yggchat-data:/app
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    # Uncomment to use custom config
+    # command: ["./yggchat", "--config", "custom.json", "--port", "8080"]
+
+volumes:
+  yggchat-data:
+    driver: local
