@@ -1,228 +1,287 @@
 #!/usr/bin/env python3
-"""Generate a modern logo for Yggdrasil Mesh Chat"""
+"""Generate a clean, modern logo for Yggdrasil Mesh Chat"""
 
 from PIL import Image, ImageDraw, ImageFont
 import math
 
 def create_logo(size=800):
-    """Create a modern Yggdrasil Mesh Chat logo"""
+    """Create a clean, modern Yggdrasil Mesh Chat logo"""
     
-    # Create image with transparent background
-    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    # Create image with dark background
+    img = Image.new('RGB', (size, size), (26, 27, 38))
     draw = ImageDraw.Draw(img)
     
-    # Tokyo Night inspired colors
-    bg_color = (26, 27, 38, 255)        # #1a1b26
-    accent_blue = (122, 162, 247, 255)  # #7aa2f7
-    accent_purple = (187, 154, 247, 255) # #bb9af7
-    accent_green = (158, 206, 106, 255) # #9ece6a
-    text_color = (169, 177, 214, 255)   # #a9b1d6
-    white = (255, 255, 255, 255)
+    # Colors - Tokyo Night palette
+    bg = (26, 27, 38)
+    dark = (22, 23, 33)
+    blue = (122, 162, 247)
+    purple = (187, 154, 247)
+    green = (158, 206, 106)
+    amber = (224, 175, 104)
+    text_light = (169, 177, 214)
+    white = (248, 248, 242)
     
-    # Center and radius
     cx, cy = size // 2, size // 2
-    radius = size // 2 - 20
     
-    # Draw outer circle background
-    draw.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=bg_color)
+    # Draw rounded rectangle background
+    margin = 40
+    corner_radius = 60
+    draw.rounded_rectangle(
+        [margin, margin, size - margin, size - margin],
+        radius=corner_radius,
+        fill=dark
+    )
     
-    # Draw subtle border ring
-    border_width = 4
-    draw.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], 
-                 outline=accent_blue, width=border_width)
+    # Draw subtle border
+    draw.rounded_rectangle(
+        [margin, margin, size - margin, size - margin],
+        radius=corner_radius,
+        outline=blue,
+        width=3
+    )
     
-    # Draw inner decorative ring
-    inner_radius = radius - 30
-    draw.ellipse([cx - inner_radius, cy - inner_radius, cx + inner_radius, cy + inner_radius], 
-                 outline=(*accent_blue[:3], 80), width=1)
+    # === Draw stylized tree ===
     
-    # Draw the Yggdrasil tree (stylized)
-    tree_color = accent_green
-    trunk_color = (*accent_blue[:3], 200)
+    # Trunk - clean vertical line
+    trunk_x = cx
+    trunk_top = cy - 140
+    trunk_bottom = cy + 100
+    trunk_width = 10
     
-    # Tree trunk
-    trunk_width = 8
-    trunk_bottom = cy + 120
-    trunk_top = cy - 80
-    draw.line([(cx, trunk_bottom), (cx, trunk_top)], fill=trunk_color, width=trunk_width)
+    # Draw trunk with gradient effect (thicker at bottom)
+    for y in range(trunk_top, trunk_bottom):
+        progress = (y - trunk_top) / (trunk_bottom - trunk_top)
+        width = int(6 + progress * 8)
+        color = (
+            int(blue[0] * (1 - progress * 0.3)),
+            int(blue[1] * (1 - progress * 0.3)),
+            int(blue[2] * (1 - progress * 0.3))
+        )
+        draw.line([(trunk_x - width//2, y), (trunk_x + width//2, y)], fill=color)
     
-    # Draw roots (3 main roots)
-    root_color = (*accent_blue[:3], 150)
-    for angle_offset in [-40, 0, 40]:
-        root_len = 60
-        end_x = cx + math.sin(math.radians(angle_offset)) * root_len
-        end_y = trunk_bottom + math.cos(math.radians(angle_offset)) * root_len * 0.5
-        draw.line([(cx, trunk_bottom), (end_x, end_y)], fill=root_color, width=4)
+    # === Branches ===
+    # Clean, symmetrical branch structure
     
-    # Draw branches (5 main branches - representing the 5 realms)
-    branch_color = accent_purple
-    branches = [
-        (-60, -100, 80),   # left upper
-        (-30, -90, 70),    # left mid
-        (0, -110, 90),     # top
-        (30, -90, 70),     # right mid
-        (60, -100, 80),    # right upper
+    branch_data = [
+        # (angle, length, y_offset, thickness)
+        (-70, 100, -80, 5),
+        (-45, 120, -100, 5),
+        (-20, 90, -120, 4),
+        (0, 80, -140, 4),      # top
+        (20, 90, -120, 4),
+        (45, 120, -100, 5),
+        (70, 100, -80, 5),
     ]
     
-    for angle, start_offset, length in branches:
-        start_y = trunk_top + abs(start_offset) // 3
-        end_x = cx + math.sin(math.radians(angle)) * length
-        end_y = start_y - math.cos(math.radians(angle)) * length * 0.7
-        draw.line([(cx, start_y), (end_x, end_y)], fill=branch_color, width=4)
+    branch_points = []
+    
+    for angle, length, y_offset, thickness in branch_data:
+        start_x = trunk_x
+        start_y = cy + y_offset
         
-        # Add leaves/nodes at branch ends
-        node_size = 8
-        draw.ellipse([end_x - node_size, end_y - node_size, 
-                      end_x + node_size, end_y + node_size], 
-                     fill=accent_green, outline=white, width=2)
+        angle_rad = math.radians(angle - 90)
+        end_x = start_x + math.cos(angle_rad) * length
+        end_y = start_y + math.sin(angle_rad) * length
+        
+        # Draw branch
+        draw.line([(start_x, start_y), (end_x, end_y)], fill=purple, width=thickness)
+        
+        # Store endpoint for nodes
+        branch_points.append((end_x, end_y))
+        
+        # Draw small leaf/node at end
+        node_r = 6
+        draw.ellipse(
+            [end_x - node_r, end_y - node_r, end_x + node_r, end_y + node_r],
+            fill=green,
+            outline=white,
+            width=2
+        )
     
-    # Add network connection lines (mesh effect)
-    mesh_color = (*accent_blue[:3], 60)
-    nodes = []
-    for angle, start_offset, length in branches:
-        start_y = trunk_top + abs(start_offset) // 3
-        end_x = cx + math.sin(math.radians(angle)) * length
-        end_y = start_y - math.cos(math.radians(angle)) * length * 0.7
-        nodes.append((end_x, end_y))
+    # === Roots ===
+    root_data = [
+        (-30, 80, 5),
+        (-10, 70, 4),
+        (10, 70, 4),
+        (30, 80, 5),
+    ]
     
-    # Connect some nodes with dotted lines (mesh network effect)
-    for i in range(len(nodes)):
-        for j in range(i + 2, len(nodes)):
-            if (i + j) % 2 == 0:
-                x1, y1 = nodes[i]
-                x2, y2 = nodes[j]
-                # Draw dotted line
-                steps = 10
-                for k in range(0, steps, 2):
-                    t1 = k / steps
-                    t2 = (k + 1) / steps
-                    px1 = x1 + (x2 - x1) * t1
-                    py1 = y1 + (y2 - y1) * t1
-                    px2 = x1 + (x2 - x1) * t2
-                    py2 = y1 + (y2 - y1) * t2
-                    draw.line([(px1, py1), (px2, py2)], fill=mesh_color, width=2)
+    for angle, length, thickness in root_data:
+        start_x = trunk_x
+        start_y = trunk_bottom - 20
+        
+        angle_rad = math.radians(angle + 90)
+        end_x = start_x + math.cos(angle_rad) * length
+        end_y = start_y + math.sin(angle_rad) * length * 0.6
+        
+        draw.line([(start_x, start_y), (end_x, end_y)], fill=blue, width=thickness)
     
-    # Add lightning bolt symbol at the base
-    bolt_color = (224, 175, 104, 255)  # #e0af68 (warning/amber)
+    # === Network mesh lines ===
+    # Connect some nodes with subtle lines
+    
+    mesh_pairs = [(0, 2), (1, 3), (2, 4), (3, 5), (4, 6), (0, 6), (1, 5)]
+    
+    for i, j in mesh_pairs:
+        if i < len(branch_points) and j < len(branch_points):
+            x1, y1 = branch_points[i]
+            x2, y2 = branch_points[j]
+            
+            # Draw dashed line
+            dash_length = 8
+            gap_length = 6
+            dx = x2 - x1
+            dy = y2 - y1
+            dist = math.sqrt(dx*dx + dy*dy)
+            
+            if dist > 0:
+                dx /= dist
+                dy /= dist
+                
+                pos = 0
+                while pos < dist:
+                    sx = x1 + dx * pos
+                    sy = y1 + dy * pos
+                    end_pos = min(pos + dash_length, dist)
+                    ex = x1 + dx * end_pos
+                    ey = y1 + dy * end_pos
+                    
+                    # Fade based on position
+                    alpha = int(80 * (1 - pos/dist * 0.5))
+                    color = (blue[0], blue[1], blue[2])
+                    
+                    draw.line([(sx, sy), (ex, ey)], fill=color, width=2)
+                    pos += dash_length + gap_length
+    
+    # === Lightning bolt symbol ===
     bolt_cx = cx
     bolt_cy = cy + 60
-    bolt_size = 25
+    bolt_size = 30
     
-    # Lightning bolt shape
     bolt_points = [
-        (bolt_cx - 8, bolt_cy - bolt_size),
-        (bolt_cx + 12, bolt_cy - bolt_size),
-        (bolt_cx + 2, bolt_cy - 5),
-        (bolt_cx + 15, bolt_cy - 5),
-        (bolt_cx - 5, bolt_cy + bolt_size),
-        (bolt_cx + 5, bolt_cy + 5),
-        (bolt_cx - 8, bolt_cy + 5),
+        (bolt_cx - 10, bolt_cy - bolt_size),
+        (bolt_cx + 15, bolt_cy - bolt_size),
+        (bolt_cx + 3, bolt_cy - 5),
+        (bolt_cx + 18, bolt_cy - 5),
+        (bolt_cx - 8, bolt_cy + bolt_size),
+        (bolt_cx + 7, bolt_cy + 8),
+        (bolt_cx - 12, bolt_cy + 8),
     ]
-    draw.polygon(bolt_points, fill=bolt_color)
+    draw.polygon(bolt_points, fill=amber)
     
-    # Draw text - "YGGDRASIL" at top
+    # === Text ===
+    
+    # Load fonts
     try:
-        # Try to use a nice font, fall back to default
-        font_large = ImageFont.truetype("arial.ttf", 42)
-        font_small = ImageFont.truetype("arial.ttf", 28)
-        font_tiny = ImageFont.truetype("arial.ttf", 20)
+        # Try different font paths
+        font_paths = [
+            "C:/Windows/Fonts/arial.ttf",
+            "C:/Windows/Fonts/segoeui.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "arial.ttf",
+        ]
+        
+        font_large = None
+        font_small = None
+        
+        for path in font_paths:
+            try:
+                font_large = ImageFont.truetype(path, 48)
+                font_small = ImageFont.truetype(path, 32)
+                break
+            except:
+                continue
+        
+        if font_large is None:
+            font_large = ImageFont.load_default()
+            font_small = ImageFont.load_default()
+            
     except:
         font_large = ImageFont.load_default()
         font_small = ImageFont.load_default()
-        font_tiny = ImageFont.load_default()
     
-    # Top arc text - "YGGDRASIL"
-    text = "YGGDRASIL"
-    text_color_top = accent_blue
+    # Title text "YGGDRASIL" - centered at top
+    title = "YGGDRASIL"
+    title_bbox = draw.textbbox((0, 0), title, font=font_large)
+    title_w = title_bbox[2] - title_bbox[0]
+    title_x = cx - title_w // 2
+    title_y = margin + 40
     
-    # Calculate positions for arc text
-    arc_radius = radius - 50
-    total_angle = 120  # degrees
-    start_angle = 270 - total_angle / 2
+    draw.text((title_x, title_y), title, fill=blue, font=font_large)
     
-    for i, char in enumerate(text):
-        angle = start_angle + (i / (len(text) - 1)) * total_angle
-        angle_rad = math.radians(angle)
-        x = cx + arc_radius * math.cos(angle_rad)
-        y = cy + arc_radius * math.sin(angle_rad)
-        
-        # Rotate character
-        char_img = Image.new('RGBA', (50, 50), (0, 0, 0, 0))
-        char_draw = ImageDraw.Draw(char_img)
-        bbox = char_draw.textbbox((0, 0), char, font=font_large)
-        char_w = bbox[2] - bbox[0]
-        char_h = bbox[3] - bbox[1]
-        char_draw.text(((50 - char_w) // 2, (50 - char_h) // 2), char, fill=text_color_top, font=font_large)
-        
-        rotated = char_img.rotate(-(angle - 270), expand=True, resample=Image.BICUBIC)
-        paste_x = int(x - rotated.width // 2)
-        paste_y = int(y - rotated.height // 2)
-        
-        img.paste(rotated, (paste_x, paste_y), rotated)
+    # Subtitle "MESH CHAT" - centered at bottom
+    subtitle = "MESH CHAT"
+    subtitle_bbox = draw.textbbox((0, 0), subtitle, font=font_small)
+    subtitle_w = subtitle_bbox[2] - subtitle_bbox[0]
+    subtitle_x = cx - subtitle_w // 2
+    subtitle_y = size - margin - 80
     
-    # Bottom arc text - "MESH CHAT"
-    bottom_text = "MESH CHAT"
-    text_color_bottom = accent_purple
+    draw.text((subtitle_x, subtitle_y), subtitle, fill=purple, font=font_small)
     
-    bottom_arc_radius = radius - 50
-    bottom_total_angle = 100
-    bottom_start_angle = 90 - bottom_total_angle / 2
+    # === Decorative elements ===
     
-    for i, char in enumerate(bottom_text):
-        angle = bottom_start_angle + (i / (len(bottom_text) - 1)) * bottom_total_angle
-        angle_rad = math.radians(angle)
-        x = cx + bottom_arc_radius * math.cos(angle_rad)
-        y = cy + bottom_arc_radius * math.sin(angle_rad)
-        
-        char_img = Image.new('RGBA', (50, 50), (0, 0, 0, 0))
-        char_draw = ImageDraw.Draw(char_img)
-        bbox = char_draw.textbbox((0, 0), char, font=font_small)
-        char_w = bbox[2] - bbox[0]
-        char_h = bbox[3] - bbox[1]
-        char_draw.text(((50 - char_w) // 2, (50 - char_h) // 2), char, fill=text_color_bottom, font=font_small)
-        
-        rotated = char_img.rotate(-(angle - 270), expand=True, resample=Image.BICUBIC)
-        paste_x = int(x - rotated.width // 2)
-        paste_y = int(y - rotated.height // 2)
-        
-        img.paste(rotated, (paste_x, paste_y), rotated)
+    # Small dots in corners
+    dot_positions = [
+        (margin + 30, margin + 30),
+        (size - margin - 30, margin + 30),
+        (margin + 30, size - margin - 30),
+        (size - margin - 30, size - margin - 30),
+    ]
     
-    # Add small decorative dots around the circle
-    for angle in range(0, 360, 15):
-        dot_radius = radius - 15
-        angle_rad = math.radians(angle)
-        x = cx + dot_radius * math.cos(angle_rad)
-        y = cy + dot_radius * math.sin(angle_rad)
-        dot_size = 3
-        draw.ellipse([x - dot_size, y - dot_size, x + dot_size, y + dot_size], 
-                     fill=(*accent_blue[:3], 100))
+    for dx, dy in dot_positions:
+        draw.ellipse([dx-4, dy-4, dx+4, dy+4], fill=green)
     
     return img
 
 
+def create_rounded_logo(size=800):
+    """Create a circular version of the logo"""
+    
+    # First create the square logo
+    square_logo = create_logo(size)
+    
+    # Create circular mask
+    mask = Image.new('L', (size, size), 0)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.ellipse([0, 0, size-1, size-1], fill=255)
+    
+    # Apply mask
+    output = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    output.paste(square_logo, mask=mask)
+    
+    return output
+
+
 def main():
-    """Generate and save the logo"""
+    """Generate and save the logos"""
     print("Generating Yggdrasil Mesh Chat logo...")
     
-    # Generate high-res logo
-    logo = create_logo(800)
+    # Generate square logo (for GitHub social preview)
+    square_logo = create_logo(800)
+    square_logo.save("logo_square.png", "PNG")
+    print("Saved: logo_square.png (800x800)")
     
-    # Save as PNG (for transparency)
-    logo.save("logo.png", "PNG")
-    print("Saved: logo.png")
+    # Generate circular logo (for README)
+    round_logo = create_rounded_logo(800)
+    round_logo.save("logo.png", "PNG")
+    print("Saved: logo.png (800x800 circular)")
     
-    # Save as JPG (white background for compatibility)
-    jpg_img = Image.new('RGB', logo.size, (255, 255, 255))
-    jpg_img.paste(logo, mask=logo.split()[3])  # Use alpha channel as mask
-    jpg_img.save("logo.jpg", "JPEG", quality=95)
+    # Generate small circular logo
+    small_round = create_rounded_logo(160)
+    small_round.save("logo_small.png", "PNG")
+    print("Saved: logo_small.png (160x160)")
+    
+    # Generate JPG version (with dark background)
+    jpg_bg = Image.new('RGB', (800, 800), (26, 27, 38))
+    jpg_bg.paste(round_logo, mask=round_logo.split()[3])
+    jpg_bg.save("logo.jpg", "JPEG", quality=95)
     print("Saved: logo.jpg")
     
-    # Also create a smaller version for README (160x160)
-    small_logo = logo.resize((160, 160), Image.LANCZOS)
-    small_logo.save("logo_small.png", "PNG")
-    print("Saved: logo_small.png")
-    
     print("\nLogo generation complete!")
+    print("\nFiles created:")
+    print("  - logo.png      : Circular logo for README (transparent bg)")
+    print("  - logo_square.png : Square version for social previews")
+    print("  - logo_small.png  : Small 160x160 version")
+    print("  - logo.jpg       : JPG version (dark bg)")
 
 
 if __name__ == "__main__":
