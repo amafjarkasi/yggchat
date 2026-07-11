@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2024-01-15
+
+### Added
+
+#### Core Messaging Features
+- **Message Replies**: Reply to specific messages with context
+- **Message Reactions**: React with emojis (👍❤️😂😮😢🔥👏🎉)
+- **Message Editing**: Edit sent messages after sending
+- **Message Deletion**: Delete messages with confirmation
+- **Markdown Support**: Bold, italic, code, strikethrough, links
+- **Emoji Picker**: Built-in emoji selector (32 emojis)
+- **Broadcast Lists**: Send message to all contacts at once
+
+#### Security Features
+- **Contact Blocking**: Block/unblock contacts
+- **Panic Button**: Emergency data wipe with triple confirmation
+- **Auto-Delete**: Configurable message expiry in settings
+
+#### UI/UX Features
+- **Desktop Notifications**: Browser notifications for new messages
+- **Drag & Drop Files**: Drop files to send directly
+- **Custom Themes**: User-defined color schemes via config
+- **Message Search**: Search and highlight messages
+- **Typing Toggle**: Enable/disable typing indicators
+- **Read Receipt Toggle**: Enable/disable read receipts
+- **Peer Statistics Dashboard**: Connection quality metrics
+- **Bandwidth Monitor**: Track data usage
+- **Connection Graph**: Visual mesh network map
+- **Auto-Reconnect**: Automatic reconnection with exponential backoff
+- **Video Previews**: Support for MP4/WebM/OGG files
+
+#### Infrastructure
+- GitHub Actions CI/CD pipeline
+- Dockerfile and docker-compose.yml
+- Makefile with 30+ build targets
+- MIT LICENSE file
+- CONTRIBUTING.md guidelines
+- SECURITY.md policy
+- CHANGELOG.md (this file)
+- Example configuration files
+
 ## [1.0.0] - 2024-01-15
 
 ### Added

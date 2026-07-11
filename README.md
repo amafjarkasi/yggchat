@@ -289,6 +289,49 @@ flowchart LR
 | 💾 **Offline Queueing** | Messages buffered when contact is offline |
 | 🔄 **Auto-Flush** | Queued messages sent when contact comes online |
 | 🔍 **Message Search** | Full-text search through chat history |
+| ↩️ **Message Replies** | Reply to specific messages |
+| 😊 **Message Reactions** | React with 👍❤️😂😮😢🔥👏🎉 |
+| ✏️ **Message Editing** | Edit sent messages |
+| 🗑️ **Message Deletion** | Delete messages with confirmation |
+| 📝 **Markdown Support** | **Bold**, *italic*, `code`, ~~strikethrough~~, [links]() |
+| 😊 **Emoji Picker** | Built-in emoji selector |
+| 📢 **Broadcast Lists** | Send message to all contacts at once |
+
+---
+
+<div align="center">
+
+### 🔒 Security Features
+
+</div>
+
+| Feature | Description |
+|:--------|:------------|
+| 🚫 **Contact Blocking** | Block/unblock contacts |
+| 💥 **Panic Button** | Emergency data wipe with triple confirmation |
+| ⏰ **Auto-Delete** | Configurable message expiry (days) |
+| 🔐 **E2EE Indicators** | Visual 🔒/🔓 for encryption status |
+
+---
+
+<div align="center">
+
+### 🎨 UI/UX Features
+
+</div>
+
+| Feature | Description |
+|:--------|:------------|
+| 🔔 **Desktop Notifications** | Browser notifications for new messages |
+| 📁 **Drag & Drop** | Drop files to send directly |
+| 🎨 **Custom Themes** | User-defined color schemes |
+| 🔍 **Search & Highlight** | Search messages with highlighting |
+| ⏱️ **Typing Toggle** | Enable/disable typing indicators |
+| ✓✓ **Receipt Toggle** | Enable/disable read receipts |
+| 📊 **Peer Statistics** | Connection quality metrics |
+| 📈 **Bandwidth Monitor** | Track data usage |
+| 🌐 **Connection Graph** | Visual mesh network map |
+| 🔄 **Auto-Reconnect** | Automatic reconnection with backoff |
 
 ---
 
