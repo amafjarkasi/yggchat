@@ -36,6 +36,13 @@ type SendRequest struct {
 	SenderKey  string `json:"senderKey,omitempty"`
 	SenderName string `json:"senderName,omitempty"`
 	ECDHPubKey string `json:"ecdhPubKey,omitempty"`
+	
+	// New feature fields
+	ReplyTo    int64  `json:"replyTo,omitempty"`
+	Reaction   string `json:"reaction,omitempty"`
+	EditID     int64  `json:"editID,omitempty"`
+	DeleteID   int64  `json:"deleteID,omitempty"`
+	MessageID  int64  `json:"messageID,omitempty"`
 }
 
 // PeerSummary is a JSON-safe version of core.PeerInfo
