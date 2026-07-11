@@ -19,15 +19,12 @@ jobs:
         run: |
           go install golang.org/dl/gotip@latest
           gotip download
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       
       - name: Run vet
-        env:
-          GOTOOLCHAIN: local
         run: gotip vet ./...
       
       - name: Run tests
-        env:
-          GOTOOLCHAIN: local
         run: gotip test -v -race -coverprofile=coverage.out ./...
 
   build:
@@ -50,12 +47,12 @@ jobs:
         run: |
           go install golang.org/dl/gotip@latest
           gotip download
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          GOTOOLCHAIN: local
         run: |
           gotip build -ldflags="-s -w" -o yggchat-${{ matrix.goos }}-${{ matrix.goarch }}
       
