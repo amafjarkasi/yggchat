@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.jpg" width="160" height="160" alt="Yggdrasil Chat Logo" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);" />
+  <img src="logo.png" width="160" height="160" alt="Yggdrasil Mesh Chat Logo" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);" />
 </p>
 
 <h1 align="center">⚡ YGGDRASIL MESH CHAT ⚡</h1>
