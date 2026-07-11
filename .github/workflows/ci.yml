@@ -17,15 +17,17 @@ jobs:
       
       - name: Install Go tip
         run: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
           go install golang.org/dl/gotip@latest
-          gotip download
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          $GOPATH/bin/gotip download
+          echo "$GOPATH/bin" >> $GITHUB_PATH
       
       - name: Run vet
-        run: gotip vet ./...
+        run: ~/go/bin/gotip vet ./...
       
       - name: Run tests
-        run: gotip test -v -race -coverprofile=coverage.out ./...
+        run: ~/go/bin/gotip test -v -race -coverprofile=coverage.out ./...
 
   build:
     name: Build
@@ -45,16 +47,18 @@ jobs:
       
       - name: Install Go tip
         run: |
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
           go install golang.org/dl/gotip@latest
-          gotip download
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          $GOPATH/bin/gotip download
+          echo "$GOPATH/bin" >> $GITHUB_PATH
       
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          gotip build -ldflags="-s -w" -o yggchat-${{ matrix.goos }}-${{ matrix.goarch }}
+          ~/go/bin/gotip build -ldflags="-s -w" -o yggchat-${{ matrix.goos }}-${{ matrix.goarch }}
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
